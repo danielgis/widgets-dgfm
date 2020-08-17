@@ -1,0 +1,29 @@
+.consulta-wgt h3 {
+  font-size: 1.2em; }
+
+.consulta-wgt h3,
+.consulta-wgt p {
+  margin-top: 0; }
+
+.consulta-wgt .container_cw {
+  display: none; }
+
+.consulta-wgt .formulario_cw {
+  position: absolute;
+  overflow-x: hidden;
+  overflow-y: auto;
+  width: 100%;
+  top: 90px;
+  bottom: 50px; }
+
+.consulta-wgt .btn_aplicar_cw {
+  position: absolute;
+  bottom: 2px; }
+
+.consulta-wgt .active {
+  display: block;
+  width: 100%; }
+
+/* add additional custom styles */
+
+/*# sourceMappingURL=style.css.map */

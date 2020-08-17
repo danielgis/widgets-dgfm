@@ -1,0 +1,57 @@
+.estadisticas-wgt {
+    margin: -14px; // Quita el padding del elemento padre
+    h3 {
+        font-size: 1.2em;
+        padding: 0;
+    }
+    h3,
+    p {
+        margin-top: 0;
+    }
+    .container_ew {
+        padding: 14px;
+    }
+    .accordion_ew {
+        background-color: #ffffff;
+        color: #444;
+        cursor: pointer;
+        padding: 5px;
+        width: 100%;
+        border: none;
+        text-align: left;
+        outline: none;
+        font-size: 15px;
+        transition: 0.4s;
+    }
+    .active {
+        background-color: #fff;
+    }
+    .accordion_ew {
+        &:hover {
+            background-color: #fff;
+        }
+        &:after {
+            content: '\002B';
+            color: #777;
+            font-weight: bold;
+            float: right;
+            margin-left: 5px;
+        }
+    }
+    .accordion_ew.active:after {
+        content: "\2212";
+    }
+    .panel_ew {
+        padding: 0 5px;
+        background-color: white;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.2s ease-out;
+    }
+    .panel_ew.active {
+        max-height: 100%;
+    }
+}
+
+
+/* add additional custom styles */

@@ -1,0 +1,38 @@
+.consulta-wgt {
+    h3 {
+        font-size: 1.2em;
+    }
+    h3,
+    p {
+        margin-top: 0;
+    }
+    .container_cw {
+        display: none;
+    }
+    .formulario_cw {
+        position: absolute;
+        overflow-x: hidden;
+        overflow-y: auto;
+        width: 100%;
+        top: 90px;
+        bottom: 50px;
+    }
+    .btn_aplicar_cw {
+        position: absolute;
+        bottom: 2px;
+    }
+    // .lista_capas_consulta_cw.is-active {
+    //     display: block;
+    //     width: 100%;
+    // }
+    // .lista_capas_consulta_cw {
+    //     display: none;
+    // }
+    .active {
+        display: block;
+        width: 100%;
+    }
+}
+
+
+/* add additional custom styles */

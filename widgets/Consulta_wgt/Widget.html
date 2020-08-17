@@ -1,0 +1,125 @@
+<div style="height: 100%;">
+    <div class="tabs is-fullwidth" style="margin-bottom: 0;">
+        <ul>
+            <li class="is-active"><a><strong>Tareas</strong></a></li>
+            <li><a><strong>Resultados</strong></a></li>
+        </ul>
+    </div>
+    <table class="lista_capas_consulta_cw table is-hoverable is-fullwidth" data-dojo-attach-point="listaCapasconsulta">
+        <tbody>
+            <tr id='dc' class="capa_consulta_cw" style="cursor: pointer;">
+                <th><span>Declaración de Compromiso</span></th>
+                <th class="has-text-right"><span class="icon has-text-info">
+                  <i class="fas fa-filter"></i>
+                </span></th>
+            </tr>
+            <tr id='dm' class="capa_consulta_cw" style="cursor: pointer;">
+                <th><span></span>Derecho Minero</span>
+                </th>
+                <th class="has-text-right"><span class="icon has-text-info">
+                  <i class="fas fa-filter"></i>
+                </span></th>
+            </tr>
+            <tr></tr>
+        </tbody>
+    </table>
+    <div class="container_cw">
+        <table class="table is-fullwidth">
+            <tbody>
+                <tr>
+                    <th style="width: 10%;">
+                        <span class="icon has-text-info"><i class="fas fa-angle-double-left"></i></span>
+                    </th>
+                    <th class="has-text-centered" data-dojo-attach-point="titulo_consulta"></th>
+                    <th style="width: 10%;"></th>
+                </tr>
+            </tbody>
+        </table>
+        <div class="formulario_cw" data-dojo-attach-point="formulario_dc_cw">
+            <div class="field">
+                <label class="label is-small">RUC</label>
+                <div class="control">
+                    <input class="input is-small" type="text">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label is-small">Nombre de minero en vías de formalización</label>
+                <div class="control">
+                    <input class="input is-small" type="text">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label is-small">Tipo de persona</label>
+                <div class="control">
+                    <div class="select is-small is-fullwidth">
+                        <select>
+                        <option>Select dropdown</option>
+                        <option>With options</option>
+                      </select>
+                    </div>
+                </div>
+            </div>
+            <div class="field">
+                <label class="label is-small">Código de derecho minero</label>
+                <div class="control">
+                    <input class="input is-small" type="text">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label is-small">Nombre de derecho minero</label>
+                <div class="control">
+                    <input class="input is-small" type="text">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label is-small">Región</label>
+                <div class="control">
+                    <div class="select is-small is-fullwidth">
+                        <select>
+                        <option>Select dropdown</option>
+                        <option>With options</option>
+                      </select>
+                    </div>
+                </div>
+            </div>
+            <div class="field">
+                <label class="label is-small">Provincia</label>
+                <div class="control">
+                    <div class="select is-small is-fullwidth">
+                        <select>
+                      <option>Select dropdown</option>
+                      <option>With options</option>
+                    </select>
+                    </div>
+                </div>
+            </div>
+            <div class="field">
+                <label class="label is-small">Distrito</label>
+                <div class="control">
+                    <div class="select is-small is-fullwidth">
+                        <select>
+                    <option>Select dropdown</option>
+                    <option>With options</option>
+                  </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="formulario_cw" data-dojo-attach-point="formulario_dm_cw">
+            <div class="field">
+                <label class="label is-small">Código de derecho minero</label>
+                <div class="control">
+                    <input class="input is-small" type="text">
+                </div>
+            </div>
+            <div class="field">
+                <label class="label is-small">Nombre de derecho minero</label>
+                <div class="control">
+                    <input class="input is-small" type="text">
+                </div>
+            </div>
+            <button class="button is-small is-fullwidth is-primary">Aplicar</button>
+        </div>
+        <button class="button is-small is-fullwidth is-primary btn_aplicar_cw" data-dojo-attach-point="btn_aplicar_cw">Aplicar</button>
+    </div>
+</div>
