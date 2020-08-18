@@ -1,3 +1,7 @@
 {
-  "serviceUrl": "https://sampleserver6.arcgisonline.com/arcgis/rest/services/USA/MapServer"
+    "layer_id_dc": "DGFM_DCASUMIDA_UNION_2283",
+    "layer_id_dm": "catastro_minero_7931",
+    "layer_id_dep": "SERV_CARTOGRAFIA_DEMARCACION_WGS84_5485_0",
+    "layer_id_prov": "SERV_CARTOGRAFIA_DEMARCACION_WGS84_5485_1",
+    "layer_id_dist": "SERV_CARTOGRAFIA_DEMARCACION_WGS84_5485_2"
 }

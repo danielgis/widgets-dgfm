@@ -20,6 +20,12 @@
   position: absolute;
   bottom: 2px; }
 
+.consulta-wgt .container_opcion_cw {
+  display: none; }
+
+.consulta-wgt .limite_select_cw {
+  display: none; }
+
 .consulta-wgt .active {
   display: block;
   width: 100%; }

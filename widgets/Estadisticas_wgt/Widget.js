@@ -54,7 +54,7 @@ export default declare([
     },
 
     _getAllLayers() {
-        _layerInfosObjClone = []
+        // _layerInfosObjClone = []
         LayerInfos.getInstance(this.map, this.map.itemInfo)
             .then(lang.hitch(this, function(layerInfosObj) {
                 this.layersMap = layerInfosObj;
