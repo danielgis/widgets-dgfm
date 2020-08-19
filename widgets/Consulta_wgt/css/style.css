@@ -26,6 +26,29 @@
 .consulta-wgt .limite_select_cw {
   display: none; }
 
+.consulta-wgt .indicador_resultados_cw {
+  text-align: center;
+  font-size: 50px; }
+
+.consulta-wgt .titulo_resultados_cw {
+  text-align: center; }
+
+.consulta-wgt .registros_resultados_cw {
+  position: absolute;
+  overflow-x: hidden;
+  overflow-y: auto;
+  width: 100%;
+  top: 155px;
+  bottom: 50px; }
+
+.consulta-wgt .success_resultados_opcion_cw {
+  display: none; }
+
+.consulta-wgt .alerta_resultados_cw {
+  display: none;
+  position: absolute;
+  bottom: 2px; }
+
 .consulta-wgt .active {
   display: block;
   width: 100%; }

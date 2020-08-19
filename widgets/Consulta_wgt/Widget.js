@@ -1,6 +1,6 @@
 import declare from 'dojo/_base/declare';
 import BaseWidget from 'jimu/BaseWidget';
-import query from "dojo/query";
+// import query from "dojo/query";
 import lang from 'dojo/_base/lang';
 import LayerInfos from 'jimu/LayerInfos/LayerInfos';
 import Query from "esri/tasks/query";
@@ -11,7 +11,7 @@ import StatisticDefinition from "esri/tasks/StatisticDefinition";
 // import "dojo/domReady!";
 
 // To create a widget, you need to derive from BaseWidget.
-export default declare([BaseWidget, query, Query,
+export default declare([BaseWidget, Query,
     QueryTask,
     StatisticDefinition
 ], {
@@ -108,12 +108,18 @@ export default declare([BaseWidget, query, Query,
     _getDataByProvincia(evt) {
         var cd_depa = evt.target.value;
         self_cw.controller_ubigeo = cd_depa;
+
+        self_cw.distrito_cw.innerHTML = '';
+        self_cw.container_distrito_cw.classList.remove('active');
+
+        var id = self_cw.config.layer_id_prov
         if (cd_depa == '') {
+            // self_cw.config.layer_id_prov = ''
             self_cw.container_provincia_cw.classList.remove('active');
-            self_cw.container_distrito_cw.classList.remove('active');
+            // self_cw.container_distrito_cw.classList.remove('active');
             return
         }
-        var id = self_cw.config.layer_id_prov
+
         var feature_prov = this.layersMap.getLayerInfoById(id);
         var queryTask = new QueryTask(feature_prov.getUrl());
         var query = new Query();
@@ -123,6 +129,7 @@ export default declare([BaseWidget, query, Query,
         query.orderByFields = [self_cw.field_prov_nm_prov];
         queryTask.execute(query, function(results) {
             self_cw.provincia_cw.innerHTML = "";
+            // self_cw.distrito_cw.innerHTML = '';
             var result_options = results.features.map((i) => i.attributes);
             result_options.forEach(element => {
                 opt = document.createElement("option");
@@ -133,21 +140,25 @@ export default declare([BaseWidget, query, Query,
             opt = document.createElement("option");
             opt.value = '';
             opt.text = 'Todos';
-            // opt.selected = true;
+            opt.selected = true;
             self_cw.provincia_cw.add(opt);
+
         });
         if (!self_cw.container_provincia_cw.classList.contains('active')) {
             self_cw.container_provincia_cw.classList.toggle('active');
-        }
+        };
+
+        self_cw._zoomExtendSelected(self_cw.config.layer_id_dep, query.where);
     },
 
     _getDataByDistrito(evt) {
         var cd_prov = evt.target.value;
-        self_cw.controller_ubigeo = cd_prov;
         if (cd_prov == '') {
+            self_cw.controller_ubigeo = self_cw.controller_ubigeo.substring(0, 2)
             self_cw.container_distrito_cw.classList.remove('active')
             return
         }
+        self_cw.controller_ubigeo = cd_prov;
         var id = self_cw.config.layer_id_dist
         var feature_dist = this.layersMap.getLayerInfoById(id);
         var queryTask = new QueryTask(feature_dist.getUrl());
@@ -166,19 +177,29 @@ export default declare([BaseWidget, query, Query,
                 self_cw.distrito_cw.add(opt);
             })
             opt = document.createElement("option");
-            opt.value = 0;
+            opt.value = '';
             opt.text = 'Todos';
-            // opt.selected = true;
+            opt.selected = true;
             self_cw.distrito_cw.add(opt);
         });
         if (!self_cw.container_distrito_cw.classList.contains('active')) {
             self_cw.container_distrito_cw.classList.toggle('active');
         }
+
+        self_cw._zoomExtendSelected(self_cw.config.layer_id_prov, query.where);
     },
 
     _getDistritoSelected(evt) {
         var cd_dist = evt.target.value;
+        // query = new Query();
+        // query.where = `${self_cw.field_dist_cd_dist} = '${cd_dist}'`;
+        whereDefinition = `${self_cw.field_dist_cd_dist} = '${cd_dist}'`
+        if (cd_dist == '') {
+            self_cw.controller_ubigeo = self_cw.controller_ubigeo.substring(0, 4)
+            return
+        }
         self_cw.controller_ubigeo = cd_dist;
+        self_cw._zoomExtendSelected(self_cw.config.layer_id_dist, whereDefinition);
     },
 
     // Metodos dedicados al frontend del widget
@@ -206,7 +227,7 @@ export default declare([BaseWidget, query, Query,
     },
 
     _returnListaCapasConsulta() {
-        var nodeContainer_cw = query(".container_cw");
+        var nodeContainer_cw = dojo.query(".container_cw");
         dojo.toggleClass(nodeContainer_cw[0], 'active');
         self_cw.ListaCapasConsulta.hidden = false;
     },
@@ -220,7 +241,7 @@ export default declare([BaseWidget, query, Query,
         if (evt.currentTarget.classList.contains('is-active')) {
             return
         };
-        query('.opcion_cw').forEach(function(node) {
+        dojo.query('.opcion_cw').forEach(function(node) {
             var container_option = self_cw[`${node.id}_${node.classList[0]}`]
             if (node.innerText.toLowerCase() == option) {
                 node.classList.toggle('is-active')
@@ -237,6 +258,22 @@ export default declare([BaseWidget, query, Query,
         evt.currentTarget.value = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
     },
 
+    // Interaccion con el mapa
+
+    _zoomExtendSelected(idService, whereDefinition) {
+        var query = new Query();
+        query.where = whereDefinition;
+        var feature = this.layersMap.getLayerInfoById(idService);
+        feature.getLayerObject().then(function(results) {
+            results.queryExtent(query, function(res) {
+                self_cw.map.setExtent(res.extent, true)
+            }, function(error) {
+                console.log(error);
+            })
+        }, function(error) {
+            console.log(error)
+        });
+    },
 
     // Proceso que realiza la consulta
     _applyQuery(evt) {
@@ -258,23 +295,68 @@ export default declare([BaseWidget, query, Query,
         whereDefinitionArray = []
 
         var ruc_dc = `(m_ruc like '%${self_cw.input_ruc_dc_cw.value}%')`;
-        var nombre_dc = `(lower(minero_informal) like lower('%${self_cw.input_nombre_dc_cw.value}%'))`;
-        var codigou_dc = `(upper(id_unidad) like upper('%${self_cw.input_codigou_dc_cw.value}%'))`;
-        var nombredm_dc = `(lower(derecho_minero) like lower('%${self_cw.input_nombre_dm_dc_cw.value}%'))`;
-        var ubigeo_dc = `(id_ubigeo_inei like '${self_cw.controller_ubigeo}%')`;
+        whereDefinitionArray.push(ruc_dc);
 
-        whereDefinitionArray.push(ruc_dc)
-        whereDefinitionArray.push(nombre_dc)
-        whereDefinitionArray.push(codigou_dc)
-        whereDefinitionArray.push(nombredm_dc)
-        whereDefinitionArray.push(ubigeo_dc)
+        var nombre_dc = `(lower(minero_informal) like lower('%${self_cw.input_nombre_dc_cw.value}%'))`;
+        whereDefinitionArray.push(nombre_dc);
+
+        if (self_cw.select_tipo_persona_cw.value != '') {
+            var tipo_persona_dc = `(tipo_persona like '%${self_cw.select_tipo_persona_cw.value}%')`;
+            whereDefinitionArray.push(tipo_persona_dc);
+        };
+
+        var codigou_dc = `(upper(id_unidad) like upper('%${self_cw.input_codigou_dc_cw.value}%'))`;
+        whereDefinitionArray.push(codigou_dc);
+
+        var nombredm_dc = `(lower(derecho_minero) like lower('%${self_cw.input_nombre_dm_dc_cw.value}%'))`;
+        whereDefinitionArray.push(nombredm_dc);
+
+        var ubigeo_dc = `(id_ubigeo_inei like '${self_cw.controller_ubigeo}%')`;
+        whereDefinitionArray.push(ubigeo_dc);
 
         var whereDefinition = whereDefinitionArray.join(' and ');
 
+        // Filtro a capa DC visible en la TOC
+        var id = self_cw.config.layer_id_dc;
+        var feature = self_cw.layersMap.getLayerInfoById(id);
+        feature.setFilter(whereDefinition);
+        feature.show();
 
-        console.log(whereDefinition);
+        // Filtro a capa DC sistema no visible en la TOC
+        var id_sys = self_cw.config.layer_id_dc_sys;
+        var feature_sys = self_cw.layersMap.getLayerInfoById(id_sys);
+        feature_sys.setFilter(whereDefinition);
+        feature_sys.show();
 
-        // query
+        // Ocultando los mensajes de alerta frente a errores
+        self_cw.ap_alerta_resultados_cw.classList.remove('active');
+
+        feature.layerObject.queryFeatures(whereDefinition, function(result) {
+            var rowcount = result.features.length;
+            self_cw.ap_indicador_resultados_cw.innerText = rowcount;
+            self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
+
+            var data = result.features.map((i) => i.attributes);
+            console.log(data);
+
+            self_cw.ap_none_resultados_opcion_cw.hidden = true;
+            var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
+            if (!class_list_container_resultados.contains('active')) {
+                self_cw.container_resultados_opcion_cw.classList.toggle('active');
+            }
+            self_cw.ap_resultados_cw.click();
+        });
+
+        // if (self_cw.ap_indicador_resultados_cw.innerText == '0') {
+        //     return
+        // };
+
+        feature_sys.layerObject.queryExtent(whereDefinition, (results) => {
+            if (results.count) {
+                self_cw.map.setExtent(results.extent, true);
+            }
+        })
+
         // List results
         // Change view results
         // Open popup when click list

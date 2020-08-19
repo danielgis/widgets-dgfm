@@ -27,6 +27,30 @@
     .limite_select_cw {
         display: none;
     }
+    .indicador_resultados_cw {
+        text-align: center;
+        font-size: 50px;
+    }
+    .titulo_resultados_cw {
+        text-align: center;
+    }
+    .registros_resultados_cw {
+        // display: hidden;
+        position: absolute;
+        overflow-x: hidden;
+        overflow-y: auto;
+        width: 100%;
+        top: 155px;
+        bottom: 50px;
+    }
+    .success_resultados_opcion_cw {
+        display: none;
+    }
+    .alerta_resultados_cw {
+        display: none;
+        position: absolute;
+        bottom: 2px;
+    }
     // .lista_capas_consulta_cw.is-active {
     //     display: block;
     //     width: 100%;

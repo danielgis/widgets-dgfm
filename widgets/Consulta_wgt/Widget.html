@@ -2,7 +2,7 @@
     <div class="tabs is-fullwidth" style="margin-bottom: 0;">
         <ul>
             <li id="tareas" class="opcion_cw is-active"><a><strong>Tareas</strong></a></li>
-            <li id="resultados" class="opcion_cw"><a><strong>Resultados</strong></a></li>
+            <li id="resultados" class="opcion_cw" data-dojo-attach-point="ap_resultados_cw"><a><strong>Resultados</strong></a></li>
         </ul>
     </div>
     <div class="container_opcion_cw active" data-dojo-attach-point="tareas_opcion_cw">
@@ -116,7 +116,59 @@
         </div>
     </div>
     <div class="container_opcion_cw" data-dojo-attach-point="resultados_opcion_cw">
-        <p>No hay ningún resultado.</p>
+        <div data-dojo-attach-point="ap_none_resultados_opcion_cw">
+            <p>No hay ningún resultado.</p>
+        </div>
+        <div class="success_resultados_opcion_cw" data-dojo-attach-point="container_resultados_opcion_cw">
+            <div class="indicador_resultados_cw" data-dojo-attach-point="ap_indicador_resultados_cw">
+                <p><strong></strong></p>
+            </div>
+            <div class="titulo_resultados_cw" data-dojo-attach-point="ap_titulo_resultados_cw">
+            </div>
+            <div class="registros_resultados_cw">
+                <aside class="menu is-small">
+                    <ul class="menu-list">
+                        <li>
+                            <a class="is-active">
+                                <div class="resultado" style="display: flex; flex-direction: row;">
+                                    <div style="width: 80%">1. 20494883199</div>
+                                    <div class="has-text-right" style="width: 20%;"><span class="icon has-text-info"><i class="fas fa-chevron-down"></i></span></div>
+                                </div>
+                            </a>
+                            <ul class="menu-list">
+                                <li>
+                                    <a class="is-active">NOMBRE DC: EMPRESA ARGEL MINE S.A.C.</a>
+                                    <ul>
+                                        <li><a>CODIGO DM: 010646907</a></li>
+                                        <li><a>NOMBRE DM: OLIVO VERDE</a></li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                        <li>
+                            <a class="is-active">
+                                <div class="resultado">
+                                    <div style="width: 80%">1. 20494883199</div>
+                                    <div class="has-text-right" style="width: 20%;"><span class="icon has-text-info"><i class="fas fa-chevron-down"></i></span></div>
+                                </div>
+                            </a>
+                            <ul class="menu-list">
+                                <li>
+                                    <a class="is-active">NOMBRE DC: EMPRESA ARGEL MINE S.A.C.</a>
+                                    <ul>
+                                        <li><a>CODIGO DM: 010646907</a></li>
+                                        <li><a>NOMBRE DM: OLIVO VERDE</a></li>
+                                    </ul>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </aside>
+            </div>
+            <div class="notification is-small is-danger is-light alerta_resultados_cw" data-dojo-attach-point="ap_alerta_resultados_cw">
+            </div>
+        </div>
+
     </div>
 
 </div>
