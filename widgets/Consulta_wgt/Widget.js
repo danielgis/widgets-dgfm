@@ -6,6 +6,8 @@ import LayerInfos from 'jimu/LayerInfos/LayerInfos';
 import Query from "esri/tasks/query";
 import QueryTask from "esri/tasks/QueryTask";
 import StatisticDefinition from "esri/tasks/StatisticDefinition";
+import InfoTemplate from "esri/InfoTemplate";
+// import domConstruct from 'dojo/dom-construct';
 // import on from 'dojo/on';
 // import domClass from "dojo/dom-class";
 // import "dojo/domReady!";
@@ -13,7 +15,8 @@ import StatisticDefinition from "esri/tasks/StatisticDefinition";
 // To create a widget, you need to derive from BaseWidget.
 export default declare([BaseWidget, Query,
     QueryTask,
-    StatisticDefinition
+    StatisticDefinition,
+    // domConstruct
 ], {
 
     // Custom widget code goes here
@@ -32,9 +35,13 @@ export default declare([BaseWidget, Query,
     field_dist_nm_dist: 'NM_DIST',
     field_dist_cd_dist: 'CD_DIST',
 
+    field_codigou_dm: 'CODIGOU',
+
     controller_query: '', // Permite identificar la opcion de consulta seleccionada
 
     controller_ubigeo: '',
+
+    temporal_class_results: '',
 
     // add additional properties here
 
@@ -191,8 +198,6 @@ export default declare([BaseWidget, Query,
 
     _getDistritoSelected(evt) {
         var cd_dist = evt.target.value;
-        // query = new Query();
-        // query.where = `${self_cw.field_dist_cd_dist} = '${cd_dist}'`;
         whereDefinition = `${self_cw.field_dist_cd_dist} = '${cd_dist}'`
         if (cd_dist == '') {
             self_cw.controller_ubigeo = self_cw.controller_ubigeo.substring(0, 4)
@@ -260,13 +265,49 @@ export default declare([BaseWidget, Query,
 
     // Interaccion con el mapa
 
+    _openPopupAutocamitcally(featureInfo, center, whereDefinition) {
+        var query = new Query();
+        query.where = whereDefinition;
+        featureInfo.layerObject.queryFeatures(query, function(results) {
+            // var feature = results.features.filter((i) => i.attributes['ID'] == "496461");
+            self_cw.map.infoWindow.setFeatures(results.features);
+            // self_cw.map.centerAndZoom(center, 16);
+            self_cw.map.infoWindow.show(center, self_cw.map.getInfoWindowAnchor(center));
+        });
+
+    },
+
+    _zoomDmExtentToMap(evt) {
+        let id = evt.currentTarget.innerText;
+        query = new Query();
+        query.where = `${self_cw.field_codigou_dm} = '${evt.currentTarget.innerText}'`
+        var id_layer = self_cw.config.layer_id_dm;
+        var feature = self_cw.layersMap.getLayerInfoById(id_layer);
+        feature.setFilter(query.where);
+        feature.show();
+        feature.layerObject.queryExtent(query, function(results) {
+            if (results.count) {
+                self_cw.map.setExtent(results.extent, true)
+            } else {
+                alert(`No se encontro el derecho minero ${id}, por tanto no es posible su referencia en el mapa`)
+            }
+        }, function(error) {
+            alert(error)
+        })
+    },
+
     _zoomExtendSelected(idService, whereDefinition) {
         var query = new Query();
         query.where = whereDefinition;
         var feature = this.layersMap.getLayerInfoById(idService);
         feature.getLayerObject().then(function(results) {
             results.queryExtent(query, function(res) {
-                self_cw.map.setExtent(res.extent, true)
+                if (res.count) {
+                    self_cw.map.setExtent(res.extent, true)
+                } else {
+                    alert(`No se encontro el elemento ${whereDefinition}, por tanto no es posible su referencia en el mapa`);
+                }
+
             }, function(error) {
                 console.log(error);
             })
@@ -291,8 +332,81 @@ export default declare([BaseWidget, Query,
         }
     },
 
+    _populateResults(arrayResults) {
+        arrayResults.forEach(function(r, i) {
+            if (self_cw.temporal_class_results) {
+                var newRow = self_cw.temporal_class_results;
+            } else {
+                var newRow = dojo.clone(self_cw.ap_template_registros_resultados_cw);
+            }
+
+            newRow.style.display = 'block';
+            // newRow.classList.add(self_cw.temporal_class_results);
+
+            var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
+            newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${i+1}. ${r['MINERO_INFORMAL']}`;
+            newRow.getElementsByClassName('title_registros_cw')[0].id = r['ID'];
+            dojo.connect(nodeTitle, 'onclick', self_cw._showPopupRowSelectedClick);
+            // dojo.query('.title_registros_cw', newRow)[0].on('click', self_cw._showPopupRowSelectedClick)
+
+            // Lista campos
+
+            var fieldsList = []
+            fieldsList.push(`<li>RUC: ${r['M_RUC']}</li>`);
+            fieldsList.push(`<li>Nombre DM: ${r['DERECHO_MINERO']}</li>`);
+            fieldsList.push(`<li>Código DM: <span class="tag is-primary codigou_cw">${r['ID_UNIDAD']}<span></li>`);
+            // fieldsList.push(`Código DM: <span class="tag is-primary">${r['ID_UNIDAD']}<span>`);
+
+
+            // var linode = dojo.create('li');
+            // linode.innerHTML = `Código DM: <span class="tag is-primary">${r['ID_UNIDAD']}<span>`
+            // linode.innerHTML = fieldsList.join("");
+            // console.log(linode);
+
+            // dojo.connect(linode, 'onclick', self_cw._zoomDmExtentToMap);
+            // fieldsList.push(linode.outerHTML);
+
+            fieldsListNode = fieldsList.join('');
+
+            newRow.getElementsByClassName('detalle_registros_resultados_cw')[0].innerHTML = fieldsListNode;
+
+            dojo.query('.codigou_cw').on('click', self_cw._zoomDmExtentToMap)
+
+            // newRow.getElementsByClassName('detalle_registros_resultados_cw')[0].appendChild(linode);
+
+            // var nodeli = dojo.create('li');
+            // nodeli.appendChild(newRow);
+
+            self_cw.ap_registros_encontrados_cw.appendChild(newRow);
+            // console.log(newRow);
+        })
+
+    },
+
+    _showPopupRowSelectedClick(evt) {
+        var id_row = evt.currentTarget.id;
+
+        var id_layer = self_cw.config.layer_id_dc;
+        var id_layer_sys = self_cw.config.layer_id_dc_sys;
+
+        var feature = self_cw.layersMap.getLayerInfoById(id_layer);
+        var feature_sys = self_cw.layersMap.getLayerInfoById(id_layer_sys);
+
+        var whereDefinition = `ID = ${id_row}`
+
+        feature_sys.setFilter(whereDefinition);
+
+        feature_sys.layerObject.queryFeatures(whereDefinition, function(results) {
+            var center = results.features[0].geometry;
+            self_cw._openPopupAutocamitcally(feature, center, whereDefinition);
+        })
+
+    },
+
     _applyQueryDC() {
         whereDefinitionArray = []
+
+        self_cw.ap_registros_encontrados_cw.innerHTML = '';
 
         var ruc_dc = `(m_ruc like '%${self_cw.input_ruc_dc_cw.value}%')`;
         whereDefinitionArray.push(ruc_dc);
@@ -338,6 +452,8 @@ export default declare([BaseWidget, Query,
 
             var data = result.features.map((i) => i.attributes);
             console.log(data);
+
+            self_cw._populateResults(data)
 
             self_cw.ap_none_resultados_opcion_cw.hidden = true;
             var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
