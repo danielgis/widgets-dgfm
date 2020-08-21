@@ -51,6 +51,10 @@
         position: absolute;
         bottom: 2px;
     }
+    .codigou_cw,
+    .reinfos_cw {
+        cursor: pointer;
+    }
     // .lista_capas_consulta_cw.is-active {
     //     display: block;
     //     width: 100%;
@@ -58,6 +62,9 @@
     // .lista_capas_consulta_cw {
     //     display: none;
     // }
+    .registro_dc {
+        border-bottom: #ddd solid 1px;
+    }
     .active {
         display: block;
         width: 100%;

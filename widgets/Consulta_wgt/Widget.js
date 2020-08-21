@@ -6,7 +6,12 @@ import LayerInfos from 'jimu/LayerInfos/LayerInfos';
 import Query from "esri/tasks/query";
 import QueryTask from "esri/tasks/QueryTask";
 import StatisticDefinition from "esri/tasks/StatisticDefinition";
-import InfoTemplate from "esri/InfoTemplate";
+// import InfoTemplate from "esri/InfoTemplate";
+// import FeatureLayer from "esri/layers/FeatureLayer";
+import SimpleFillSymbol from "esri/symbols/SimpleFillSymbol";
+import SimpleLineSymbol from "esri/symbols/SimpleLineSymbol";
+import Color from "esri/Color";
+import Graphic from "esri/graphic";
 // import domConstruct from 'dojo/dom-construct';
 // import on from 'dojo/on';
 // import domClass from "dojo/dom-class";
@@ -16,7 +21,7 @@ import InfoTemplate from "esri/InfoTemplate";
 export default declare([BaseWidget, Query,
     QueryTask,
     StatisticDefinition,
-    // domConstruct
+    // FeatureLayer
 ], {
 
     // Custom widget code goes here
@@ -269,30 +274,51 @@ export default declare([BaseWidget, Query,
         var query = new Query();
         query.where = whereDefinition;
         featureInfo.layerObject.queryFeatures(query, function(results) {
-            // var feature = results.features.filter((i) => i.attributes['ID'] == "496461");
             self_cw.map.infoWindow.setFeatures(results.features);
-            // self_cw.map.centerAndZoom(center, 16);
             self_cw.map.infoWindow.show(center, self_cw.map.getInfoWindowAnchor(center));
+            self_cw.map.centerAt(center);
+
+            // self_cw.map.infoWindow.show(center, self_cw.map.getInfoWindowAnchor(center));
         });
 
     },
 
     _zoomDmExtentToMap(evt) {
+
+        // self_cw._applyQueryDM.click()
         let id = evt.currentTarget.innerText;
         query = new Query();
         query.where = `${self_cw.field_codigou_dm} = '${evt.currentTarget.innerText}'`
         var id_layer = self_cw.config.layer_id_dm;
         var feature = self_cw.layersMap.getLayerInfoById(id_layer);
-        feature.setFilter(query.where);
-        feature.show();
-        feature.layerObject.queryExtent(query, function(results) {
-            if (results.count) {
-                self_cw.map.setExtent(results.extent, true)
-            } else {
-                alert(`No se encontro el derecho minero ${id}, por tanto no es posible su referencia en el mapa`)
-            }
+
+        feature.getLayerObject().then(function(response) {
+            self_cw.map.graphics.clear();
+            response.queryFeatures(query, function(results) {
+                console.log(results.features);
+                if (results.features.length) {
+                    let symbol = new SimpleFillSymbol(
+                        SimpleFillSymbol.STYLE_NULL,
+                        new SimpleLineSymbol(
+                            SimpleLineSymbol.STYLE_SOLID,
+                            new Color([255, 0, 0]), 3
+                        ),
+                        new Color([125, 125, 125, 0.35]));
+
+                    let ext = results.features[0].geometry.getExtent();
+
+                    let graphic = results.features[0].setSymbol(symbol)
+                    self_cw.map.graphics.add(graphic);
+                    self_cw.map.setExtent(ext, true);
+                } else {
+                    // alert(`No se encontro el derecho minero ${id}, por tanto no es posible su referencia en el mapa`);
+                    self_cw.ap_alerta_resultados_cw.classList.toggle('active');
+                }
+            }, function(error) {
+                alert(error);
+            })
         }, function(error) {
-            alert(error)
+            alert(error);
         })
     },
 
@@ -305,19 +331,21 @@ export default declare([BaseWidget, Query,
                 if (res.count) {
                     self_cw.map.setExtent(res.extent, true)
                 } else {
+                    // self_cw.ap_alerta_resultados_cw.classList.toggle('active');
                     alert(`No se encontro el elemento ${whereDefinition}, por tanto no es posible su referencia en el mapa`);
                 }
 
             }, function(error) {
-                console.log(error);
+                alert(error);
             })
         }, function(error) {
-            console.log(error)
+            alert(error)
         });
     },
 
     // Proceso que realiza la consulta
     _applyQuery(evt) {
+        self_cw.ap_registros_encontrados_cw.innerHTML = '';
         switch (self_cw.controller_query) {
             case 'dc':
                 self_cw._applyQueryDC();
@@ -332,7 +360,7 @@ export default declare([BaseWidget, Query,
         }
     },
 
-    _populateResults(arrayResults) {
+    _populateResultsDC(arrayResults) {
         arrayResults.forEach(function(r, i) {
             if (self_cw.temporal_class_results) {
                 var newRow = self_cw.temporal_class_results;
@@ -341,13 +369,11 @@ export default declare([BaseWidget, Query,
             }
 
             newRow.style.display = 'block';
-            // newRow.classList.add(self_cw.temporal_class_results);
 
             var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
             newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${i+1}. ${r['MINERO_INFORMAL']}`;
             newRow.getElementsByClassName('title_registros_cw')[0].id = r['ID'];
             dojo.connect(nodeTitle, 'onclick', self_cw._showPopupRowSelectedClick);
-            // dojo.query('.title_registros_cw', newRow)[0].on('click', self_cw._showPopupRowSelectedClick)
 
             // Lista campos
 
@@ -355,32 +381,114 @@ export default declare([BaseWidget, Query,
             fieldsList.push(`<li>RUC: ${r['M_RUC']}</li>`);
             fieldsList.push(`<li>Nombre DM: ${r['DERECHO_MINERO']}</li>`);
             fieldsList.push(`<li>Código DM: <span class="tag is-primary codigou_cw">${r['ID_UNIDAD']}<span></li>`);
-            // fieldsList.push(`Código DM: <span class="tag is-primary">${r['ID_UNIDAD']}<span>`);
-
-
-            // var linode = dojo.create('li');
-            // linode.innerHTML = `Código DM: <span class="tag is-primary">${r['ID_UNIDAD']}<span>`
-            // linode.innerHTML = fieldsList.join("");
-            // console.log(linode);
-
-            // dojo.connect(linode, 'onclick', self_cw._zoomDmExtentToMap);
-            // fieldsList.push(linode.outerHTML);
 
             fieldsListNode = fieldsList.join('');
 
             newRow.getElementsByClassName('detalle_registros_resultados_cw')[0].innerHTML = fieldsListNode;
 
-            dojo.query('.codigou_cw').on('click', self_cw._zoomDmExtentToMap)
-
-            // newRow.getElementsByClassName('detalle_registros_resultados_cw')[0].appendChild(linode);
-
-            // var nodeli = dojo.create('li');
-            // nodeli.appendChild(newRow);
+            // dojo.query('.codigou_cw').on('click', self_cw._zoomDmExtentToMap)
 
             self_cw.ap_registros_encontrados_cw.appendChild(newRow);
-            // console.log(newRow);
-        })
+        });
+        dojo.query('.codigou_cw').on('click', self_cw._zoomDmExtentToMap);
+    },
 
+    _showReinfos(evt) {
+        let id = evt.currentTarget.parentElement.getAttribute('value');
+        var elm = dojo.query(`.ul_registro_dc_${id}`);
+
+        // if (elm.length) {
+        //     if (elm[0].contains('active')) {
+        //         elm[0].hidden = true;
+        //         return
+        //     } else {
+        //         elm[0].hidden = false;
+        //         elm[0].toggle('active');
+        //         return
+        //     }
+        // }
+        if (evt.currentTarget.parentElement.classList.contains('active')) {
+            if (elm.length) {
+                evt.currentTarget.parentElement.removeChild(elm[0])
+                evt.currentTarget.parentElement.classList.toggle('active')
+            }
+            return;
+        }
+
+
+
+
+        // let id = evt.currentTarget.parentElement.getAttribute('value');
+        let feature = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc)
+
+        let feature_sys = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc_sys)
+
+        let query = new Query();
+        query.where = `ID_UNIDAD = '${id}'`;
+
+        feature.setFilter(query.where);
+        feature.show();
+
+        feature_sys.setFilter(query.where);
+        feature_sys.show();
+
+        // evt.currentTarget.parentElement.classList.toggle('active')
+
+        feature.getLayerObject().then(function(response) {
+            response.queryFeatures(query, function(results) {
+                if (results.features.length) {
+                    evt.target.parentElement.classList.toggle('active')
+                    let rownum = results.features.length;
+                    let data = results.features.map((i) => i.attributes);
+                    let lidata = data.map((i, index) => `<li class="registro_dc" id="${i['ID']}"><a>${index}. ${i['M_RUC']} - ${i['MINERO_INFORMAL']}</a></li>`)
+                    let lidataString = lidata.join('');
+                    let ulnode = dojo.create('ul');
+                    ulnode.innerHTML = lidataString;
+                    dojo.addClass(ulnode, `ul_registro_dc_${id}`)
+                    evt.target.parentElement.appendChild(ulnode);
+                    dojo.query('.registro_dc').on('click', self_cw._showPopupRowSelectedClick)
+                } else {
+                    alert('No se encontraron REINFOS');
+                }
+            }, function(error) {
+                alert(error);
+            })
+        }, function(error) {
+            alert(error)
+        })
+    },
+
+    _populateResultsDM(arrayResults) {
+        arrayResults.forEach(function(r, i) {
+            if (self_cw.temporal_class_results) {
+                var newRow = self_cw.temporal_class_results;
+            } else {
+                var newRow = dojo.clone(self_cw.ap_template_registros_resultados_cw);
+            }
+
+            newRow.style.display = 'block';
+
+            var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
+            newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${i+1}. Codigou: ${r['CODIGOU']}`;
+            newRow.getElementsByClassName('title_registros_cw')[0].id = r['CODIGOU'];
+            dojo.connect(nodeTitle, 'onclick', self_cw._showPopupRowSelectedClickDM);
+
+            // Lista campos
+
+            var fieldsList = []
+            fieldsList.push(`<li>Nombre DM: ${r['CONCESION']}</li>`);
+            fieldsList.push(`<li>Sustancia: ${r['SUSTANCIA']}</li>`);
+            fieldsList.push(`<li value="${r['CODIGOU']}"><span class="tag is-primary reinfos_cw">Ver reinfos<span></li>`);
+
+            fieldsListNode = fieldsList.join('');
+
+            newRow.getElementsByClassName('detalle_registros_resultados_cw')[0].innerHTML = fieldsListNode;
+
+
+
+            self_cw.ap_registros_encontrados_cw.appendChild(newRow);
+        })
+        dojo.query('.reinfos_cw').on('click', self_cw._showReinfos)
     },
 
     _showPopupRowSelectedClick(evt) {
@@ -403,13 +511,56 @@ export default declare([BaseWidget, Query,
 
     },
 
+    _openPopupAutocamitcally2(featureLayer, center) {
+        self_cw.map.infoWindow.setFeatures(featureLayer.features);
+        self_cw.map.infoWindow.show(center, self_cw.map.getInfoWindowAnchor(center));
+        self_cw.map.centerAt(center);
+    },
+
+    _showPopupRowSelectedClickDM(evt) {
+        let id_row = evt.currentTarget.id;
+
+        let id_layer = self_cw.config.layer_id_dm;
+
+        let feature = self_cw.layersMap.getLayerInfoById(id_layer);
+
+        let whereDefinition = `CODIGOU = '${id_row}'`
+
+        query = new Query();
+        query.where = whereDefinition;
+
+        // feature_sys.setFilter(whereDefinition);
+
+        feature.getLayerObject().then(function(response) {
+            response.queryFeatures(query, function(results) {
+                if (results.features.length) {
+                    let center = results.features[0].geometry.getCentroid();
+                    let ext = results.features[0].geometry.getExtent();
+                    self_cw._openPopupAutocamitcally2(results, center, query);
+                    self_cw.map.setExtent(ext, true);
+                }
+            }, function(error) {
+                alert(error);
+            })
+        }, function(error) {
+            alert(error);
+        });
+
+        // feature_sys.layerObject.queryFeatures(whereDefinition, function(results) {
+        //     var center = results.features[0].geometry;
+        //     self_cw._openPopupAutocamitcally(feature, center, whereDefinition);
+        // })
+    },
+
     _applyQueryDC() {
         whereDefinitionArray = []
 
-        self_cw.ap_registros_encontrados_cw.innerHTML = '';
+        // self_cw.ap_registros_encontrados_cw.innerHTML = '';
 
-        var ruc_dc = `(m_ruc like '%${self_cw.input_ruc_dc_cw.value}%')`;
-        whereDefinitionArray.push(ruc_dc);
+        if (self_cw.input_ruc_dc_cw.value != '') {
+            var ruc_dc = `(m_ruc like '%${self_cw.input_ruc_dc_cw.value}%')`;
+            whereDefinitionArray.push(ruc_dc);
+        }
 
         var nombre_dc = `(lower(minero_informal) like lower('%${self_cw.input_nombre_dc_cw.value}%'))`;
         whereDefinitionArray.push(nombre_dc);
@@ -445,15 +596,16 @@ export default declare([BaseWidget, Query,
         // Ocultando los mensajes de alerta frente a errores
         self_cw.ap_alerta_resultados_cw.classList.remove('active');
 
+        // Realizando el query a la capa
         feature.layerObject.queryFeatures(whereDefinition, function(result) {
             var rowcount = result.features.length;
             self_cw.ap_indicador_resultados_cw.innerText = rowcount;
             self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
 
             var data = result.features.map((i) => i.attributes);
-            console.log(data);
+            // console.log(data);
 
-            self_cw._populateResults(data)
+            self_cw._populateResultsDC(data)
 
             self_cw.ap_none_resultados_opcion_cw.hidden = true;
             var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
@@ -480,20 +632,60 @@ export default declare([BaseWidget, Query,
 
     _applyQueryDM() {
         whereDefinitionArray = []
-        var codigou_dm = `(upper(id_unidad) like upper('%${self_cw.input_codigou_dm_cw.value}%'))`;
-        var nombredm_dm = `(lower(derecho_minero) like lower('%${self_cw.input_nombre_dm_cw.value}%'))`;
+        var codigou_dm = `(upper(codigou) like upper('%${self_cw.input_codigou_dm_cw.value}%'))`;
+        var nombredm_dm = `(lower(concesion) like lower('%${self_cw.input_nombre_dm_cw.value}%'))`;
         whereDefinitionArray.push(codigou_dm)
         whereDefinitionArray.push(nombredm_dm)
 
         var whereDefinition = whereDefinitionArray.join(' and ');
 
-        console.log(whereDefinition);
+        // console.log(whereDefinition);
 
-        // query
-        // List results
-        // Add number reinfos by dm
-        // Change view results
-        // Open popup when click list
+        // Filtro a capa DC visible en la TOC
+        var id = self_cw.config.layer_id_dm;
+        var feature = self_cw.layersMap.getLayerInfoById(id);
+        feature.setFilter(whereDefinition);
+        feature.show();
+
+        self_cw.ap_alerta_resultados_cw.classList.remove('active');
+
+        let query = new Query();
+        query.where = whereDefinition;
+
+        feature.getLayerObject().then(
+            function(response) {
+                response.queryFeatures(query, function(results) {
+                    let rowcount = results.features.length;
+                    self_cw.ap_indicador_resultados_cw.innerText = rowcount;
+                    self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
+                    if (rowcount) {
+                        var data = results.features.map((i) => i.attributes);
+                        self_cw._populateResultsDM(data)
+                    }
+                    self_cw.ap_none_resultados_opcion_cw.hidden = true;
+                    var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
+                    if (!class_list_container_resultados.contains('active')) {
+                        self_cw.container_resultados_opcion_cw.classList.toggle('active');
+                    }
+                    self_cw.ap_resultados_cw.click();
+
+                }, function(error) {
+                    alert(error);
+                });
+                response.queryExtent(query, function(results) {
+                    if (results.count) {
+                        self_cw.map.setExtent(results.extent, true)
+                    } else {
+                        alert(`No se encontraron elementos`);
+                    }
+                }, function(error) {
+                    alert(error);
+                })
+            },
+            function(error) {
+                alert(error);
+            }
+        )
     },
 
     startup() {
