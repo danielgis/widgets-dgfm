@@ -439,7 +439,6 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         feature.getLayerObject().then(function(response) {
             self_cw.map.graphics.clear();
             response.queryFeatures(query, function(results) {
-                console.log(results.features);
                 if (results.features.length) {
                     let symbol = new SimpleFillSymbol(
                         SimpleFillSymbol.STYLE_NULL,
@@ -521,11 +520,9 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         switch (self_cw.controller_query) {
             case 'dc':
                 self_cw._applyQueryDC();
-                // console.log('Ejecutando proces dc');
                 break;
             case 'dm':
                 self_cw._applyQueryDM();
-                // console.log('Ejecutando proces dm');
                 break;
             default:
                 break;
@@ -748,7 +745,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         whereDefinitionArray.push(ubigeo_dc);
 
         var whereDefinition = whereDefinitionArray.join(' and ');
-        console.log(whereDefinition)
+
 
         // Filtro a capa DC visible en la TOC
         var id = self_cw.config.layer_id_dc;
@@ -800,7 +797,6 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
         var whereDefinition = whereDefinitionArray.join(' and ');
 
-        // console.log(whereDefinition);
 
         // Filtro a capa DC visible en la TOC
         var id = self_cw.config.layer_id_dm;
