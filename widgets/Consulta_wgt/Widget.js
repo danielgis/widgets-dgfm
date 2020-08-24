@@ -60,6 +60,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     field_id_ubigeo_inei: 'ID_UBIGEO_INEI', // Ubigeo
 
     controller_query: '', // Permite identificar la opcion de consulta seleccionada
+    controller_layer_query: false,
 
     controller_ubigeo: '',
 
@@ -83,11 +84,36 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     },
 
     _showMessage(message, type = 'message') {
-        new Message({
-            type: type,
-            titleLabel: `Widget ${this.nls._widgetLabel}: ${type}`,
-            message: message
-        });
+        switch (type) {
+            case 'question':
+                let messagebox = new Message({
+                    type: type,
+                    titleLabel: `Widget ${this.nls._widgetLabel}: ${type}`,
+                    message: message,
+                    buttons: [{
+                        label: 'SI',
+                        onClick: lang.hitch(this, lang.hitch(this, function() {
+                            messagebox.close();
+                        }))
+                    }, {
+                        label: 'NO',
+                        onClick: lang.hitch(this, lang.hitch(this, function() {
+                            this._cleanMap();
+                            messagebox.close();
+                        }))
+                    }]
+                });
+
+                break;
+            default:
+                new Message({
+                    type: type,
+                    titleLabel: `Widget ${this.nls._widgetLabel}: ${type}`,
+                    message: message,
+                });
+                break;
+        }
+
     },
 
     // Metodos para agregar opciones a las etiquetas 'select'
@@ -726,6 +752,9 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         // Realizando el query a la capa
         feature.layerObject.queryFeatures(whereDefinition, function(result) {
             var rowcount = result.features.length;
+            if (rowcount) {
+                self_cw.controller_layer_query = true;
+            }
             self_cw.ap_indicador_resultados_cw.innerText = rowcount;
             self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
 
@@ -775,10 +804,12 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                     let rowcount = results.features.length;
                     self_cw.ap_indicador_resultados_cw.innerText = rowcount;
                     self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
-                    // if (rowcount) {
+                    if (rowcount) {
+                        self_cw.controller_layer_query = true;
+                    };
                     var data = results.features.map((i) => i.attributes);
                     self_cw._populateResultsDM(data);
-                    // }
+
                     self_cw.ap_none_resultados_opcion_cw.hidden = true;
                     var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
                     if (!class_list_container_resultados.contains('active')) {
@@ -824,9 +855,32 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     onOpen() {
         console.log('Consulta_wgt::onOpen');
     },
-    // onClose(){
-    //   console.log('Consulta_wgt::onClose');
-    // },
+
+    _cleanMap() {
+        this.busyIndicator.show()
+        this.map.graphics.clear();
+        let whereDefinition = '1=1'
+        lyr_dc = this.layersMap.getLayerInfoById(this.config.layer_id_dc);
+        lyr_dc_sys = this.layersMap.getLayerInfoById(this.config.layer_id_dc_sys);
+        lyr_dm = this.layersMap.getLayerInfoById(this.config.layer_id_dm);
+        lyr_dc.hide();
+        lyr_dc_sys.hide();
+        lyr_dm.hide();
+        lyr_dc.setFilter(whereDefinition);
+        lyr_dc_sys.setFilter(whereDefinition);
+        lyr_dm.setFilter(whereDefinition);
+        this.busyIndicator.hide()
+        this.container_resultados_opcion_cw.classList.remove('active');
+        this.ap_none_resultados_opcion_cw.hidden = false;
+        this.controller_layer_query = false;
+    },
+
+    onClose() {
+        console.log('Consulta_wgt::onClose');
+        if (this.controller_layer_query) {
+            this._showMessage(this.nls.clean_map_question, type = 'question')
+        }
+    },
     // onMinimize(){
     //   console.log('Consulta_wgt::onMinimize');
     // },

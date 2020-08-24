@@ -45,6 +45,8 @@ define({
 
         show_reinfos: 'Ver Reinfos',
 
+        clean_map_question: '¿Desea mantener los filtros y gráficos realizados en el mapa?'
+
 
     }
     // add supported locales below:
