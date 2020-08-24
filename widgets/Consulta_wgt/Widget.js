@@ -419,6 +419,12 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
     },
 
+    _openPopupAutocamitcally2(featureLayer, center) {
+        self_cw.map.infoWindow.setFeatures(featureLayer.features);
+        self_cw.map.infoWindow.show(center, self_cw.map.getInfoWindowAnchor(center));
+        self_cw.map.centerAt(center);
+    },
+
     _zoomDmExtentToMap(evt) {
 
         // self_cw._applyQueryDM.click()
@@ -427,6 +433,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         query.where = `${self_cw.field_codigou_dm} = '${id}'`
         var id_layer = self_cw.config.layer_id_dm;
         var feature = self_cw.layersMap.getLayerInfoById(id_layer);
+        feature.setFilter(query.where);
+        feature.show();
 
         feature.getLayerObject().then(function(response) {
             self_cw.map.graphics.clear();
@@ -442,10 +450,13 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                         new Color([125, 125, 125, 0.35]));
 
                     let ext = results.features[0].geometry.getExtent();
+                    let center = results.features[0].geometry.getCentroid();
 
                     let graphic = results.features[0].setSymbol(symbol)
-                    self_cw.map.graphics.add(graphic);
+                        // self_cw.map.graphics.add(graphic);
+                    self_cw._openPopupAutocamitcally2(results, center);
                     self_cw.map.setExtent(ext, true);
+
                 } else {
                     self_cw._showMessage(`${self_cw.nls.none_element} ${id}, ${self_cw.nls.none_reference_map}`);
                 }
@@ -533,8 +544,9 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
             newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${i+1}. ${r[self_cw.field_minero_informal]}`;
-            newRow.getElementsByClassName('title_registros_cw')[0].id = r[self_cw.field_id];
-            dojo.connect(nodeTitle, 'onclick', self_cw._showPopupRowSelectedClick);
+            // newRow.getElementsByClassName('title_registros_cw')[0].id = r[self_cw.field_id];
+            newRow.getElementsByClassName('container_head_registros_cw')[0].id = r[self_cw.field_id];
+            // dojo.connect(nodeTitle, 'onclick', self_cw._showPopupRowSelectedClick);
 
             // Lista campos
 
@@ -549,6 +561,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             self_cw.ap_registros_encontrados_cw.appendChild(newRow);
         });
+        dojo.query('.container_head_registros_cw').on('click', self_cw._showPopupRowSelectedClick);
         dojo.query('.codigou_cw').on('click', self_cw._zoomDmExtentToMap);
         this.busyIndicator.hide();
     },
@@ -598,6 +611,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                     evt.target.parentElement.appendChild(ulnode);
                     dojo.query('.registro_dc').on('click', self_cw._showPopupRowSelectedClick)
                 } else {
+                    evt.target.innerText = `${self_cw.nls.show_reinfos} (0)`
                     self_cw._showMessage(self_cw.nls.none_element_pl);
                 };
                 self_cw.busyIndicator.hide();
@@ -623,8 +637,9 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
             newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${i+1}. ${self_cw.nls.field_codigou_dm}: ${r[self_cw.field_codigou_dm]}`;
-            newRow.getElementsByClassName('title_registros_cw')[0].id = r[self_cw.field_codigou_dm];
-            dojo.connect(nodeTitle, 'onclick', self_cw._showPopupRowSelectedClickDM);
+            // newRow.getElementsByClassName('title_registros_cw')[0].id = r[self_cw.field_codigou_dm];
+            newRow.getElementsByClassName('container_head_registros_cw')[0].id = r[self_cw.field_codigou_dm];
+            // dojo.connect(nodeTitle, 'onclick', self_cw._showPopupRowSelectedClickDM);
 
             // Lista campos
 
@@ -641,11 +656,17 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             self_cw.ap_registros_encontrados_cw.appendChild(newRow);
         })
-        dojo.query('.reinfos_cw').on('click', self_cw._showReinfos)
+        dojo.query('.container_head_registros_cw').on('click', self_cw._showPopupRowSelectedClickDM);
+        dojo.query('.reinfos_cw').on('click', self_cw._showReinfos);
         this.busyIndicator.hide();
     },
 
     _showPopupRowSelectedClick(evt) {
+        // if (evt.currentTarget.getElementsByClassName('container_head_registros_cw').length) {
+        //     var id_row = evt.currentTarget.getElementsByClassName('container_head_registros_cw')[0].id;
+        // } else {
+        //     var id_row = evt.currentTarget.id;
+        // }
         var id_row = evt.currentTarget.id;
 
         var id_layer = self_cw.config.layer_id_dc;
@@ -668,13 +689,10 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
     },
 
-    _openPopupAutocamitcally2(featureLayer, center) {
-        self_cw.map.infoWindow.setFeatures(featureLayer.features);
-        self_cw.map.infoWindow.show(center, self_cw.map.getInfoWindowAnchor(center));
-        self_cw.map.centerAt(center);
-    },
+
 
     _showPopupRowSelectedClickDM(evt) {
+        // let id_row = evt.currentTarget.getElementsByClassName('title_registros_cw')[0].id;
         let id_row = evt.currentTarget.id;
 
         let id_layer = self_cw.config.layer_id_dm;
@@ -702,11 +720,6 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         }, function(error) {
             self_cw._showMessage(`${self_cw.nls.error_service} ${feature.title}\n${error.message}`, type = 'error');
         });
-
-        // feature_sys.layerObject.queryFeatures(whereDefinition, function(results) {
-        //     var center = results.features[0].geometry;
-        //     self_cw._openPopupAutocamitcally(feature, center, whereDefinition);
-        // })
     },
 
     _applyQueryDC() {
