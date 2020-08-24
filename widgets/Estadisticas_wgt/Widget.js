@@ -165,11 +165,11 @@ export default declare([
                     label: self.label_y_pie,
                     data: y,
                     backgroundColor: [
-                        '#fff48f',
+                        'rgb(255, 99, 132)',
                         '#91d18b',
                         'rgb(54, 162, 235)',
                         'rgb(255, 205, 86)',
-                        'rgb(255, 99, 132)',
+                        '#fff48f',
                     ],
                     hoverOffset: 4
                 }]
@@ -230,11 +230,11 @@ export default declare([
                     label: self.label_y_horizontal_bar,
                     data: y,
                     backgroundColor: [
-                        '#fff48f',
+                        'rgb(255, 99, 132)',
                         '#91d18b',
                         'rgb(54, 162, 235)',
                         'rgb(255, 205, 86)',
-                        'rgb(255, 99, 132)',
+                        '#fff48f',
                     ],
                     borderWidth: 1,
                 }]
