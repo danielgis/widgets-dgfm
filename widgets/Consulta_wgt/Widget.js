@@ -451,8 +451,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                     let ext = results.features[0].geometry.getExtent();
                     let center = results.features[0].geometry.getCentroid();
 
-                    let graphic = results.features[0].setSymbol(symbol)
-                        // self_cw.map.graphics.add(graphic);
+                    // let graphic = results.features[0].setSymbol(symbol)
+                    // self_cw.map.graphics.add(graphic);
                     self_cw._openPopupAutocamitcally2(results, center);
                     self_cw.map.setExtent(ext, true);
 

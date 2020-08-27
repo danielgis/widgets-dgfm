@@ -1,10 +1,26 @@
 .localizar-wgt {
-  h3 {
-    font-size: 1.2em;
-  }
-  h3, p {
-    margin-top: 0;
-  }
+    height: 100%;
+    h3 {
+        font-size: 1.2em;
+    }
+    h3,
+    p {
+        margin-top: 0;
+    }
+    .container_option_lw {
+        display: none;
+    }
+    .is-active {
+        display: block;
+    }
+    .btn_aplicar_lw {
+        position: absolute;
+        bottom: 2px;
+    }
+    .container_resultados_lw {
+        display: none;
+    }
 }
+
 
 /* add additional custom styles */
