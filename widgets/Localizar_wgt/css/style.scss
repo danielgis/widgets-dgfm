@@ -10,15 +10,21 @@
     .container_option_lw {
         display: none;
     }
-    .is-active {
-        display: block;
-    }
     .btn_aplicar_lw {
         position: absolute;
         bottom: 2px;
     }
     .container_resultados_lw {
         display: none;
+        position: absolute;
+        overflow-x: hidden;
+        overflow-y: auto;
+        width: 100%;
+        top: 45px;
+        bottom: 14px;
+    }
+    .is-active {
+        display: block;
     }
 }
 
