@@ -437,7 +437,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         feature.show();
 
         feature.getLayerObject().then(function(response) {
-            self_cw.map.graphics.clear();
+            // self_cw.map.graphics.clear();
             response.queryFeatures(query, function(results) {
                 if (results.features.length) {
                     let symbol = new SimpleFillSymbol(
@@ -867,7 +867,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
     _cleanMap() {
         this.busyIndicator.show()
-        this.map.graphics.clear();
+            // this.map.graphics.clear();
         let whereDefinition = '1=1'
         lyr_dc = this.layersMap.getLayerInfoById(this.config.layer_id_dc);
         lyr_dc_sys = this.layersMap.getLayerInfoById(this.config.layer_id_dc_sys);

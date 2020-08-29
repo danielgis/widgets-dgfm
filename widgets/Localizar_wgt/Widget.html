@@ -55,7 +55,7 @@
         <div class="field">
             <div class="control has-icons-left">
                 <div class="select is-small is-fullwidth">
-                    <select>
+                    <select data-dojo-attach-point="select_poligono_opcion_lw">
                         <option value=4326 selected>WGS84 GCS</option>
                         <option value=32717>WGS84 UTM 17S</option>
                         <option value=32718>WGS84 UTM 18S</option>
@@ -75,7 +75,7 @@
             <div class="field">
                 <div class="file has-text-centered is-small is-fullwidth is-boxed has-name">
                     <label class="file-label">
-                  <input class="file-input" type="file" name="resume">
+                  <input class="file-input upload_file_lw" type="file" name="resume" data-dojo-attach-point="ap_upload_file_lw">
                   <span class="file-cta">
                     <span class="file-icon">
                       <i class="fas fa-upload"></i>
@@ -84,7 +84,7 @@
                       Seleccione o arrastre el archivo excel
                     </span>
                   </span>
-                  <span class="file-name">
+                  <span class="file-name" data-dojo-attach-point="ap_upload_file_name_lw">
                     Ningun archivo seleccionado...
                   </span>
                 </label>
@@ -106,6 +106,7 @@
                         <td><strong>G</strong></td>
                         <td class="has-text-left"><strong>Nombre</strong></td>
                         <td><strong>ver</strong></td>
+                        <td></td>
                     </tr>
                 </thead>
                 <tbody data-dojo-attach-point="ap_resultados_body_lw">

@@ -1,17 +1,24 @@
 import declare from 'dojo/_base/declare';
 import BaseWidget from 'jimu/BaseWidget';
+// import projection from "esri/geometry/projection";
 import SpatialReference from "esri/SpatialReference";
 import ProjectParameters from "esri/tasks/ProjectParameters";
 import GeometryService from 'esri/tasks/GeometryService';
+
 import Point from "esri/geometry/Point";
-// import SimpleFillSymbol from 'esri/symbols/SimpleFillSymbol';
+import Polygon from 'esri/geometry/Polygon';
+import SimpleFillSymbol from 'esri/symbols/SimpleFillSymbol';
 import SimpleLineSymbol from 'esri/symbols/SimpleLineSymbol';
 import SimpleMarkerSymbol from 'esri/symbols/SimpleMarkerSymbol';
 // import webMercatorUtils from "esri/geometry/webMercatorUtils";
 import Color from 'dojo/_base/Color';
+import GraphicsLayer from "esri/layers/GraphicsLayer";
 import Graphic from 'esri/graphic';
 import Message from "jimu/dijit/Message";
 import InfoTemplate from "esri/InfoTemplate";
+import TextSymbol from "esri/symbols/TextSymbol";
+import Font from "esri/symbols/Font";
+import 'https://unpkg.com/read-excel-file@4.x/bundle/read-excel-file.min.js';
 
 // To create a widget, you need to derive from BaseWidget.
 export default declare([BaseWidget], {
@@ -20,7 +27,7 @@ export default declare([BaseWidget], {
 
     baseClass: 'localizar-wgt',
     tabSelected: 'punto',
-    obj_resultados: {},
+    obj_resultados: [],
     obj_index: 0,
 
     // add additional properties here
@@ -158,27 +165,53 @@ export default declare([BaseWidget], {
             pointTransform = results.geometries[0];
             let symbol = new SimpleMarkerSymbol(SimpleMarkerSymbol.STYLE_SQUARE, 15, new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID, new Color([255, 0, 0]), 2), new Color([0, 255, 0, 0.25]));
             // let symbol = new SimpleMarkerSymbol();
+
             let graphic = new Graphic(pointTransform, symbol);
             console.log(graphic);
             if (graphic.geometry.x == "NaN" || graphic.geometry.y == "NaN") {
-                self_lw._showMessage("No se puede referenciar la coordenada en el mapa")
-                    // console.log("No se puede referenciar la coordenada en el mapa");
+                self_lw._showMessage("No se puede referenciar la coordenada en el mapa");
+                // self_lw.obj_index = self_lw.obj_index - 1;
+                // console.log("No se puede referenciar la coordenada en el mapa");
                 return
             }
-            self_lw.map.graphics.add(graphic);
+
+
+
+            // self_lw.obj_index = self_lw.map.graphics.graphics.length;
+            self_lw.obj_index = self_lw.obj_index + 1;
+            let name = `grafico_${self_lw.obj_index}`;
+
+            self_lw.obj_resultados.push(name);
+
+            let graphicLayer = new GraphicsLayer({ id: name });
+
+            let font = new Font("15px", Font.STYLE_NORMAL, Font.VARIANT_NORMAL, Font.WEIGHT_BOLD, "Arial");
+            let txtSym = new TextSymbol(name, font, new Color([250, 0, 0, 0.9]));
+            txtSym.setOffset(-15, -5).setAlign(TextSymbol.ALIGN_END)
+            txtSym.setHaloColor(new Color([255, 255, 255]));
+            txtSym.setHaloSize(1.5);
+            let graphicLabel = new Graphic(pointTransform, txtSym);
+
+            graphicLayer.add(graphic);
+            graphicLayer.add(graphicLabel);
+
+            self_lw.map.addLayer(graphicLayer);
+            // self_lw.map.graphics.add(graphic);
+            // self_lw.map.graphics.add(graphicLabel);
             // self_lw.map.centerAndZoom(pointTransform, 10);
             // self_lw._addResultados(graphic);
             // self_lw.ap_none_resultados_opcion_lw.hidden = true;
             // dojo.query('.container_resultados_lw').addClass('is-active')
             // self_lw.ap_resultados_lw.click();
 
-            graphic.setInfoTemplate(new InfoTemplate("Coordenadas", "<span>Este / Long:</span>" + point.x + "<br />" + "<span>Norte / Lat:</span>" + point.y));
+            graphic.setInfoTemplate(new InfoTemplate("Coordenadas", "<span>Este / Long: </span>" + point.x + "<br />" + "<span>Norte / Lat: </span>" + point.y));
             self_lw.map.infoWindow.setTitle(graphic.getTitle());
             self_lw.map.infoWindow.setContent(graphic.getContent());
             self_lw.map.infoWindow.show(pointTransform);
             self_lw.map.centerAndZoom(pointTransform, 10);
 
-            self_lw._addResultados(graphic);
+
+            self_lw._addResultados(graphicLayer, name);
             self_lw.ap_none_resultados_opcion_lw.hidden = true;
 
             dojo.query('.container_resultados_lw').addClass('is-active')
@@ -198,9 +231,8 @@ export default declare([BaseWidget], {
                 response = x >= -180 & x <= 180 ? true : false
                 return response;
             case 'utm':
-                response = x >= 0 & x <= 500000 ? true : false
+                response = x >= 0 & x <= 1000000 ? true : false
                 return response
-                break;
             default:
                 break;
         }
@@ -221,27 +253,102 @@ export default declare([BaseWidget], {
         }
     },
 
-    _addResultados(graph) {
-        this.obj_index = this.obj_index + 1;
-        let name = `grafico_${this.obj_index}`;
-        let id = `${name}_lw`
-        let i_class = this.tabSelected == 'punto' ? 'far fa-dot-circle' : 'fas fa-draw-polygon'
+    _addResultados(graphicLayer, name) {
+        // self_lw.obj_index = self_lw.obj_index + 1;
+        // let id_label = `grafico_${self_lw.obj_index}`;
+        // let id = `${name}_lw`
+        let i_class = self_lw.tabSelected == 'punto' ? 'far fa-dot-circle' : 'fas fa-draw-polygon'
         let icon_elm = `<span class="icon is-small"><i class="${i_class}"></i></span>`
 
         let tr = dojo.create('tr');
 
-        this.obj_resultados[id] = graph._extent
-        let tds = `<td>${icon_elm}</td><td class="has-text-left">${name}</td><td><span class="icon is-small"><i class="fas fa-search"></i></span></td>`;
-        tr.id = id;
+        // self_lw.obj_resultados[id] = {
+        //     idx_graph: self_lw.obj_index - 1,
+        //     idx_label: self_lw.obj_index,
+        //     extent: graph._extent
+        // }
+        let td_array = [];
+        td_array.push(`<td>${icon_elm}</td>`);
+        td_array.push(`<td id="${name}_name" class="has-text-left" contenteditable='true'>${name}</td>`);
+        td_array.push(`<td><span id="${name}_ext" class="icon is-small"><i class="fas fa-search"></i></span></td>`);
+        td_array.push(`<td><span id="${name}_del" class="icon is-small" style="color: #FF5722;"><i class="far fa-trash-alt"></i></span></td>`);
+
+        let tds = td_array.join('');
+
+        // let tds = `<td>${icon_elm}</td><td id="${name}_name" class="has-text-left" contenteditable='true'>${name}</td><td><span id="${name}_ext" class="icon is-small"><i class="fas fa-search"></i></span></td>`;
+        tr.id = name;
         tr.innerHTML = tds;
         tr.style.cursor = "pointer";
-        this.ap_resultados_body_lw.appendChild(tr)
-        dojo.query(`#${id}`).on('click', this._zoomToExtentByResult);
+        self_lw.ap_resultados_body_lw.appendChild(tr)
+        dojo.query(`#${name}_ext`).on('click', self_lw._zoomToExtentByResult);
+        dojo.query(`#${name}_name`).on('input', self_lw._editaNameResult);
+        dojo.query(`#${name}_del`).on('click', self_lw._deleteResult);
     },
 
     _zoomToExtentByResult(evt) {
-        let id = evt.currentTarget.id;
-        self_cw.map.setExtent(self_lw.obj_resultados[id], true);
+        let id = evt.currentTarget.id.replace('_ext', '');
+        let lyr = self_lw.map.getLayer(id);
+        self_lw.map.setExtent(lyr.graphics[0]._extent, true);
+    },
+
+    _editaNameResult(evt) {
+        let id = evt.currentTarget.id.replace('_name', '');
+        // let idx = self_lw.obj_resultados[id].idx_label;
+        // console.log(self_lw.map.graphics.graphics[idx].symbol.text);
+        // let lyr = self_lw.map.getLayer(id);
+        self_lw.map.getLayer(id).graphics[1].symbol.text = evt.currentTarget.innerText;
+        self_lw.map.getLayer(id).refresh()
+            // console.log(evt.currentTarget.innerText);
+    },
+
+    _deleteResult(evt) {
+        let id = evt.currentTarget.id.replace('_del', '');
+        let elem = dojo.query(`#${id}`);
+        self_lw.map.removeLayer(self_lw.map.getLayer(id));
+        elem[0].parentNode.removeChild(elem[0]);
+    },
+
+    _uploadFile(evt) {
+        let name = evt.currentTarget.value.toLowerCase();
+        self_lw.ap_upload_file_name_lw.innerText = name;
+        let srid = self_lw.select_poligono_opcion_lw.value;
+        readXlsxFile(evt.currentTarget.files[0]).then((data) => {
+
+            let rings = data.slice(1);
+            let polygonJson = { "rings": [rings], "spatialReference": { "wkid": parseInt(srid) } };
+
+            let geometryService = new GeometryService("https://geoportal.minem.gob.pe/minem/rest/services/Utilities/Geometry/GeometryServer");
+
+            let polygon = new Polygon(polygonJson);
+            console.log(polygon);
+            let polygonTransform = null;
+
+            let parameters = new ProjectParameters();
+            parameters.geometries = [polygon];
+            parameters.outSR = self_lw.map.spatialReference;
+            parameters.transformForward = true;
+
+            geometryService.project(parameters);
+            geometryService.on("project-complete", function(results) {
+                polygonTransform = results.geometries[0];
+
+                let symbol = new SimpleFillSymbol(
+                    SimpleFillSymbol.STYLE_NULL,
+                    new SimpleLineSymbol(
+                        SimpleLineSymbol.STYLE_SOLID,
+                        new Color([255, 0, 0]), 3
+                    ),
+                    new Color([125, 125, 125, 0.35]));
+
+                let graphic = new Graphic(polygonTransform, symbol);
+                self_lw.map.graphics.add(graphic);
+                console.log(graphic);
+                self_lw.map.setExtent(graphic._extent, true);
+            });
+            geometryService.on("error", function(error) {
+                self_lw._showMessage(error.message, type = 'error')
+            });
+        })
     },
 
     startup() {
@@ -249,9 +356,11 @@ export default declare([BaseWidget], {
         console.log('Localizar_wgt::startup');
         dojo.query('.opcion_lw').on('click', this._tabToggleForm);
         dojo.query('.btn_aplicar_lw').on('click', this._graphPoint);
+        dojo.query('.upload_file_lw').on('change', this._uploadFile);
     },
     // onOpen() {
     //   console.log('Localizar_wgt::onOpen');
+
     // },
     // onClose(){
     //   console.log('Localizar_wgt::onClose');
