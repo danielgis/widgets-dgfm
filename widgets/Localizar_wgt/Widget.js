@@ -18,6 +18,7 @@ import Message from "jimu/dijit/Message";
 import InfoTemplate from "esri/InfoTemplate";
 import TextSymbol from "esri/symbols/TextSymbol";
 import Font from "esri/symbols/Font";
+import BusyIndicator from 'esri/dijit/util/busyIndicator';
 import 'https://unpkg.com/read-excel-file@4.x/bundle/read-excel-file.min.js';
 
 // To create a widget, you need to derive from BaseWidget.
@@ -29,6 +30,7 @@ export default declare([BaseWidget], {
     tabSelected: 'punto',
     obj_resultados: [],
     obj_index: 0,
+    obj_resultados_xls: {},
 
     // add additional properties here
 
@@ -90,13 +92,19 @@ export default declare([BaseWidget], {
         });
     },
 
+    _validateRucNumber_lw(evt) {
+        var val = evt.currentTarget.value;
+        evt.currentTarget.value = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+    },
+
     _applyGraphic(evt) {
-        switch (tabSelected) {
+        console.log(self_lw.tabSelected);
+        switch (self_lw.tabSelected) {
             case 'punto':
-                this._graphPoint();
+                self_lw._graphPoint();
                 break;
             case 'poligono':
-
+                self_lw._graphPolygon();
                 break;
 
             default:
@@ -108,6 +116,14 @@ export default declare([BaseWidget], {
     _graphPoint() {
         // Captura del SRC seleccionado
         let srid = self_lw.select_punto_opcion_lw.value;
+
+        if (srid == '') {
+            self_lw._showMessage("Debe seleccionar un Sistema de Referencia Espacial")
+            self_lw.ap_select_punto_lw.classList.add('is-danger')
+            return
+        }
+
+        self_lw.ap_select_punto_lw.classList.remove('is-danger')
 
         let src = srid == '4326' ? 'gcs' : 'utm';
 
@@ -223,6 +239,96 @@ export default declare([BaseWidget], {
         })
     },
 
+
+    _graphPolygon() {
+        self_lw.busyIndicator_lw.show()
+
+
+
+        let srid = self_lw.select_poligono_opcion_lw.value;
+
+        if (srid == '') {
+            self_lw._showMessage("Debe seleccionar un Sistema de Referencia Espacial")
+            self_lw.ap_select_poligono_lw.classList.add('is-danger')
+            self_lw.busyIndicator_lw.hide();
+            return
+        };
+
+        self_lw.ap_select_poligono_lw.classList.remove('is-danger');
+
+
+
+        let rings = self_lw.obj_resultados_xls.slice(1);
+        let polygonJson = { "rings": [rings], "spatialReference": { "wkid": parseInt(srid) } };
+
+
+        let geometryService = new GeometryService("https://geoportal.minem.gob.pe/minem/rest/services/Utilities/Geometry/GeometryServer");
+
+        let polygon = new Polygon(polygonJson);
+        let polygonTransform = null;
+
+        let parameters = new ProjectParameters();
+        parameters.geometries = [polygon];
+        parameters.outSR = self_lw.map.spatialReference;
+        parameters.transformForward = true;
+
+        geometryService.project(parameters);
+        geometryService.on("project-complete", function(results) {
+
+            polygonTransform = results.geometries[0];
+
+            self_lw.obj_index = self_lw.obj_index + 1;
+            let name = `grafico_${self_lw.obj_index}`;
+            self_lw.obj_resultados.push(name);
+
+            let graphicLayer = new GraphicsLayer({ id: name });
+
+            let symbol = new SimpleFillSymbol(
+                SimpleFillSymbol.STYLE_NULL,
+                new SimpleLineSymbol(
+                    SimpleLineSymbol.STYLE_SOLID,
+                    new Color([255, 0, 0]), 3
+                ),
+                new Color([125, 125, 125, 0.35]));
+
+            let graphic = new Graphic(polygonTransform, symbol);
+
+            let font = new Font("15px", Font.STYLE_NORMAL, Font.VARIANT_NORMAL, Font.WEIGHT_BOLD, "Arial");
+            let txtSym = new TextSymbol(name, font, new Color([250, 0, 0, 0.9]));
+            txtSym.setOffset(-15, -5).setAlign(TextSymbol.ALIGN_END)
+            txtSym.setHaloColor(new Color([255, 255, 255]));
+            txtSym.setHaloSize(1.5);
+
+            let center = polygonTransform.getCentroid();
+
+            let graphicLabel = new Graphic(center, txtSym);
+
+            graphicLayer.add(graphic);
+            graphicLayer.add(graphicLabel);
+
+            self_lw.map.addLayer(graphicLayer);
+            // self_lw.map.infoWindow.show(center);
+            self_lw.map.centerAndZoom(center, 10);
+
+
+            self_lw._addResultados(graphicLayer, name);
+            self_lw.ap_none_resultados_opcion_lw.hidden = true;
+
+            dojo.query('.container_resultados_lw').addClass('is-active')
+            self_lw.ap_resultados_lw.click();
+
+            self_lw.busyIndicator_lw.hide();
+
+        });
+        geometryService.on("error", function(error) {
+            self_lw.busyIndicator_lw.hide();
+            self_lw._showMessage(error.error.message, type = 'error')
+        });
+
+
+
+    },
+
     _validateCoordX(x, src) {
         let response = true;
         x = parseFloat(x)
@@ -309,53 +415,46 @@ export default declare([BaseWidget], {
     },
 
     _uploadFile(evt) {
-        let name = evt.currentTarget.value.toLowerCase();
-        self_lw.ap_upload_file_name_lw.innerText = name;
-        let srid = self_lw.select_poligono_opcion_lw.value;
-        readXlsxFile(evt.currentTarget.files[0]).then((data) => {
+        self_lw.busyIndicator_lw.show();
+        if (!evt.currentTarget.files[0]) {
+            self_lw.busyIndicator_lw.hide();
+            return
+        };
+        let name = evt.currentTarget.files[0].name;
 
-            let rings = data.slice(1);
-            let polygonJson = { "rings": [rings], "spatialReference": { "wkid": parseInt(srid) } };
+        if (!name.endsWith('.xlsx')) {
+            self_lw._showMessage('El archivo cargado no es de formato *xlsx', type = 'error');
+            self_lw.busyIndicator_lw.hide();
+            return
+        }
 
-            let geometryService = new GeometryService("https://geoportal.minem.gob.pe/minem/rest/services/Utilities/Geometry/GeometryServer");
-
-            let polygon = new Polygon(polygonJson);
-            console.log(polygon);
-            let polygonTransform = null;
-
-            let parameters = new ProjectParameters();
-            parameters.geometries = [polygon];
-            parameters.outSR = self_lw.map.spatialReference;
-            parameters.transformForward = true;
-
-            geometryService.project(parameters);
-            geometryService.on("project-complete", function(results) {
-                polygonTransform = results.geometries[0];
-
-                let symbol = new SimpleFillSymbol(
-                    SimpleFillSymbol.STYLE_NULL,
-                    new SimpleLineSymbol(
-                        SimpleLineSymbol.STYLE_SOLID,
-                        new Color([255, 0, 0]), 3
-                    ),
-                    new Color([125, 125, 125, 0.35]));
-
-                let graphic = new Graphic(polygonTransform, symbol);
-                self_lw.map.graphics.add(graphic);
-                console.log(graphic);
-                self_lw.map.setExtent(graphic._extent, true);
-            });
-            geometryService.on("error", function(error) {
+        readXlsxFile(evt.currentTarget.files[0])
+            .then((data) => {
+                self_lw.ap_upload_file_name_lw.innerText = name;
+                self_lw.ap_container_upload_file_lw.classList.add('is-primary')
+                self_lw.obj_resultados_xls = data;
+                self_lw.ap_help_message_lw.classList.add('has-text-primary');
+                self_lw.ap_help_message_lw.innerText = 'El archivo *.xlsx se cargó correctamente';
+                self_lw.busyIndicator_lw.hide();
+            })
+            .catch((error) => {
+                self_lw.ap_container_upload_file_lw.classList.add('is-danger')
+                self_lw.ap_help_message_lw.classList.add('has-text-danger');
+                self_lw.ap_help_message_lw.innerText = 'Ocurrio un error al cargar el archivo';
                 self_lw._showMessage(error.message, type = 'error')
+                self_lw.busyIndicator_lw.hide();
             });
-        })
     },
 
     startup() {
         this.inherited(arguments);
         console.log('Localizar_wgt::startup');
+        this.busyIndicator_lw = BusyIndicator.create({
+            target: this.domNode.parentNode.parentNode.parentNode,
+            backgroundOpacity: 0
+        });
         dojo.query('.opcion_lw').on('click', this._tabToggleForm);
-        dojo.query('.btn_aplicar_lw').on('click', this._graphPoint);
+        dojo.query('.btn_aplicar_lw').on('click', this._applyGraphic);
         dojo.query('.upload_file_lw').on('change', this._uploadFile);
     },
     // onOpen() {
