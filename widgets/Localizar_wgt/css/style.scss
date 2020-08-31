@@ -23,6 +23,16 @@
         top: 45px;
         bottom: 14px;
     }
+    .container_option_point_lw,
+    .container_option_polygon_lw {
+        // display: none;
+        position: absolute;
+        overflow-x: hidden;
+        overflow-y: auto;
+        width: 100%;
+        top: 115px;
+        bottom: 50px;
+    }
     .is-active {
         display: block;
     }
