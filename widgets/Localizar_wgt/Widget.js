@@ -244,6 +244,13 @@ export default declare([BaseWidget], {
         self_lw.busyIndicator_lw.show()
 
 
+        if (self_lw.ap_upload_file_lw.value == "") {
+            self_lw._showMessage("Debe cargar un archivo en formato *.xlsx", type = 'error')
+            self_lw.busyIndicator_lw.hide()
+            return
+        }
+
+
 
         let srid = self_lw.select_poligono_opcion_lw.value;
 
