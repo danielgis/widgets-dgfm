@@ -1,16 +1,13 @@
 import declare from 'dojo/_base/declare';
 import BaseWidget from 'jimu/BaseWidget';
-// import projection from "esri/geometry/projection";
 import SpatialReference from "esri/SpatialReference";
 import ProjectParameters from "esri/tasks/ProjectParameters";
 import GeometryService from 'esri/tasks/GeometryService';
-
 import Point from "esri/geometry/Point";
 import Polygon from 'esri/geometry/Polygon';
 import SimpleFillSymbol from 'esri/symbols/SimpleFillSymbol';
 import SimpleLineSymbol from 'esri/symbols/SimpleLineSymbol';
 import SimpleMarkerSymbol from 'esri/symbols/SimpleMarkerSymbol';
-// import webMercatorUtils from "esri/geometry/webMercatorUtils";
 import Color from 'dojo/_base/Color';
 import GraphicsLayer from "esri/layers/GraphicsLayer";
 import Graphic from 'esri/graphic';
@@ -19,6 +16,7 @@ import InfoTemplate from "esri/InfoTemplate";
 import TextSymbol from "esri/symbols/TextSymbol";
 import Font from "esri/symbols/Font";
 import BusyIndicator from 'esri/dijit/util/busyIndicator';
+import AreasAndLengthsParameters from "esri/tasks/AreasAndLengthsParameters";
 import 'https://unpkg.com/read-excel-file@4.x/bundle/read-excel-file.min.js';
 
 // To create a widget, you need to derive from BaseWidget.
@@ -92,9 +90,19 @@ export default declare([BaseWidget], {
         });
     },
 
-    _validateRucNumber_lw(evt) {
+    _validateCoordinateNumber_lw(evt) {
         var val = evt.currentTarget.value;
         evt.currentTarget.value = val.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+    },
+
+    _populateSelectSistemReference_lw() {
+        this.config.crs.forEach(function(i) {
+            let opt = document.createElement("option");
+            opt.value = i.epsg;
+            opt.text = i.name_epsg;
+            self_lw.select_punto_opcion_lw.add(opt);
+        });
+        this.select_poligono_opcion_lw.innerHTML = this.select_punto_opcion_lw.innerHTML;
     },
 
     _applyGraphic(evt) {
@@ -118,7 +126,7 @@ export default declare([BaseWidget], {
         let srid = self_lw.select_punto_opcion_lw.value;
 
         if (srid == '') {
-            self_lw._showMessage("Debe seleccionar un Sistema de Referencia Espacial")
+            self_lw._showMessage(self_lw.nls.err_sistema_referencial)
             self_lw.ap_select_punto_lw.classList.add('is-danger')
             return
         }
@@ -140,10 +148,13 @@ export default declare([BaseWidget], {
 
         if (!self_lw._validateCoordX(x, src)) {
             self_lw.ap_input_x_lw.classList.add('is-danger')
+            self_lw.ap_help_x_lw.classList.add('is-active');
+            self_lw.ap_help_x_lw.innerText = src == 'gcs' ? self_lw.nls.allowed_lon_values : self_lw.nls.allowed_este_values
             return
         };
 
-        self_lw.ap_input_x_lw.classList.remove('is-danger')
+        self_lw.ap_input_x_lw.classList.remove('is-danger');
+        self_lw.ap_help_x_lw.classList.remove('is-active');
 
         // Validacion de cordenada Y ingresada
         let y = self_lw.ap_input_y_lw.value;
@@ -156,13 +167,17 @@ export default declare([BaseWidget], {
         // y = parseInt(y);
 
         if (!self_lw._validateCoordY(y, src)) {
-            self_lw.ap_input_y_lw.classList.add('is-danger')
+            self_lw.ap_input_y_lw.classList.add('is-danger');
+            self_lw.ap_help_y_lw.classList.add('is-active');
+            self_lw.ap_help_y_lw.innerText = src == 'gcs' ? self_lw.nls.allowed_lat_values : self_lw.nls.allowed_norte_values
+                // self.ap_help_y_message_lw.classList.add('active')
             return
         };
 
         self_lw.ap_input_y_lw.classList.remove('is-danger')
+        self_lw.ap_help_y_lw.classList.remove('is-active');
 
-        let geometryService = new GeometryService("https://geoportal.minem.gob.pe/minem/rest/services/Utilities/Geometry/GeometryServer");
+        let geometryService = new GeometryService(self_lw.config.url_geometry_Server);
 
 
         let spatialReference = new SpatialReference({ wkid: parseInt(srid) });
@@ -185,7 +200,7 @@ export default declare([BaseWidget], {
             let graphic = new Graphic(pointTransform, symbol);
             console.log(graphic);
             if (graphic.geometry.x == "NaN" || graphic.geometry.y == "NaN") {
-                self_lw._showMessage("No se puede referenciar la coordenada en el mapa");
+                self_lw._showMessage(self_lw.nls.err_referenciar_coordenada);
                 // self_lw.obj_index = self_lw.obj_index - 1;
                 // console.log("No se puede referenciar la coordenada en el mapa");
                 return
@@ -245,7 +260,7 @@ export default declare([BaseWidget], {
 
 
         if (self_lw.ap_upload_file_lw.value == "") {
-            self_lw._showMessage("Debe cargar un archivo en formato *.xlsx", type = 'error')
+            self_lw._showMessage(self_lw.nls.err_formato_invalido, type = 'error')
             self_lw.busyIndicator_lw.hide()
             return
         }
@@ -255,7 +270,7 @@ export default declare([BaseWidget], {
         let srid = self_lw.select_poligono_opcion_lw.value;
 
         if (srid == '') {
-            self_lw._showMessage("Debe seleccionar un Sistema de Referencia Espacial")
+            self_lw._showMessage(self_lw.nls.err_sistema_referencial)
             self_lw.ap_select_poligono_lw.classList.add('is-danger')
             self_lw.busyIndicator_lw.hide();
             return
@@ -269,7 +284,7 @@ export default declare([BaseWidget], {
         let polygonJson = { "rings": [rings], "spatialReference": { "wkid": parseInt(srid) } };
 
 
-        let geometryService = new GeometryService("https://geoportal.minem.gob.pe/minem/rest/services/Utilities/Geometry/GeometryServer");
+        let geometryService = new GeometryService(self_lw.config.url_geometry_Server);
 
         let polygon = new Polygon(polygonJson);
         let polygonTransform = null;
@@ -302,7 +317,7 @@ export default declare([BaseWidget], {
 
             let font = new Font("15px", Font.STYLE_NORMAL, Font.VARIANT_NORMAL, Font.WEIGHT_BOLD, "Arial");
             let txtSym = new TextSymbol(name, font, new Color([250, 0, 0, 0.9]));
-            txtSym.setOffset(-15, -5).setAlign(TextSymbol.ALIGN_END)
+            // txtSym.setOffset(-15, -5).setAlign(TextSymbol.ALIGN_END)
             txtSym.setHaloColor(new Color([255, 255, 255]));
             txtSym.setHaloSize(1.5);
 
@@ -315,7 +330,26 @@ export default declare([BaseWidget], {
 
             self_lw.map.addLayer(graphicLayer);
             // self_lw.map.infoWindow.show(center);
-            self_lw.map.centerAndZoom(center, 10);
+
+            let areasAndLengthParams = new AreasAndLengthsParameters();
+            areasAndLengthParams.lengthUnit = GeometryService.UNIT_METERS;
+            areasAndLengthParams.areaUnit = GeometryService.UNIT_HECTARES;
+            areasAndLengthParams.calculationType = "geodesic";
+            areasAndLengthParams.polygons = [graphic.geometry];
+
+            geometryService.areasAndLengths(areasAndLengthParams).then(function(results) {
+                let area = results.areas[0].toFixed(4);
+                let perimetro = results.lengths[0].toFixed(4);
+                graphic.setInfoTemplate(new InfoTemplate("Polígono", "<span>Área (ha): </span>" + area + "<br />" + "<span>Perímetro (m): </span>" + perimetro));
+                self_lw.map.infoWindow.setTitle(graphic.getTitle());
+                self_lw.map.infoWindow.setContent(graphic.getContent());
+                self_lw.map.infoWindow.show(center);
+            });
+
+
+
+            // self_lw.map.centerAndZoom(center, 10);
+            self_cw.map.setExtent(graphic._extent, true);
 
 
             self_lw._addResultados(graphicLayer, name);
@@ -341,7 +375,7 @@ export default declare([BaseWidget], {
         x = parseFloat(x)
         switch (src) {
             case 'gcs':
-                response = x >= -180 & x <= 180 ? true : false
+                response = x > -180 & x < 180 ? true : false
                 return response;
             case 'utm':
                 response = x >= 0 & x <= 1000000 ? true : false
@@ -356,7 +390,7 @@ export default declare([BaseWidget], {
         y = parseFloat(y)
         switch (src) {
             case 'gcs':
-                response = y >= -90 & y <= 90 ? true : false
+                response = y > -90 & y < 90 ? true : false
                 return response;
             case 'utm':
                 response = y >= 0 & y <= 10000000 ? true : false
@@ -430,7 +464,7 @@ export default declare([BaseWidget], {
         let name = evt.currentTarget.files[0].name;
 
         if (!name.endsWith('.xlsx')) {
-            self_lw._showMessage('El archivo cargado no es de formato *xlsx', type = 'error');
+            self_lw._showMessage(self_lw.nls.err_formato_invalido, type = 'error');
             self_lw.busyIndicator_lw.hide();
             return
         }
@@ -438,16 +472,24 @@ export default declare([BaseWidget], {
         readXlsxFile(evt.currentTarget.files[0])
             .then((data) => {
                 self_lw.ap_upload_file_name_lw.innerText = name;
+
+                self_lw.ap_container_upload_file_lw.classList.remove('is-danger');
+                self_lw.ap_help_message_lw.classList.remove('has-text-danger');
+
                 self_lw.ap_container_upload_file_lw.classList.add('is-primary')
                 self_lw.obj_resultados_xls = data;
+
                 self_lw.ap_help_message_lw.classList.add('has-text-primary');
-                self_lw.ap_help_message_lw.innerText = 'El archivo *.xlsx se cargó correctamente';
+                self_lw.ap_help_message_lw.innerText = self_lw.nls.suc_cargar_archivo;
                 self_lw.busyIndicator_lw.hide();
             })
             .catch((error) => {
+                self_lw.ap_container_upload_file_lw.classList.remove('is-primary');
+                self_lw.ap_help_message_lw.classList.remove('has-text-primary');
+
                 self_lw.ap_container_upload_file_lw.classList.add('is-danger')
                 self_lw.ap_help_message_lw.classList.add('has-text-danger');
-                self_lw.ap_help_message_lw.innerText = 'Ocurrio un error al cargar el archivo';
+                self_lw.ap_help_message_lw.innerText = self_lw.nls.err_cargar_archivo;
                 self_lw._showMessage(error.message, type = 'error')
                 self_lw.busyIndicator_lw.hide();
             });
@@ -463,6 +505,7 @@ export default declare([BaseWidget], {
         dojo.query('.opcion_lw').on('click', this._tabToggleForm);
         dojo.query('.btn_aplicar_lw').on('click', this._applyGraphic);
         dojo.query('.upload_file_lw').on('change', this._uploadFile);
+        this._populateSelectSistemReference_lw()
     },
     // onOpen() {
     //   console.log('Localizar_wgt::onOpen');

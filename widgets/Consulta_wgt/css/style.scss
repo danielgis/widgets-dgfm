@@ -21,6 +21,12 @@
         position: absolute;
         bottom: 2px;
     }
+    .pagination_response_cw {
+        position: absolute;
+        bottom: 10px;
+        width: 100%;
+        display: none;
+    }
     .container_opcion_cw {
         display: none;
     }
@@ -40,8 +46,9 @@
         overflow-x: hidden;
         overflow-y: auto;
         width: 100%;
-        top: 155px;
-        bottom: 14px;
+        top: 140px;
+        // bottom: 14px;
+        bottom: 50px;
     }
     .success_resultados_opcion_cw {
         display: none;
@@ -69,6 +76,37 @@
         display: block;
         width: 100%;
     }
+    .paginationActive {
+        display: flex;
+    }
+    .pagination.is-small {
+        font-size: .65rem;
+    }
+    .pagination-link.is-current {
+        background-color: #00d1b2;
+        border-color: #00d1b2;
+    }
+    .titulo_registros_resultados_cw {
+        text-align: center;
+        font-size: 11px;
+        color: #427edf;
+    }
+    // .pagination-list {
+    //     flex-wrap: nowrap;
+    //     align-items: initial !important;
+    //     justify-content: left !important;
+    // }
+    // .pagination.pagination-list {
+    //     align-items: normal !important;
+    // }
+    // .pagination_container_cw {
+    //     // background-color: #333;
+    //     overflow: auto;
+    //     white-space: nowrap;
+    // }
+    // .pages_result_cw {
+    //     display: inline-block;
+    // }
 }
 
 

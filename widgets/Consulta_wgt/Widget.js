@@ -46,9 +46,15 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     field_dist_nm_dist: 'NM_DIST',
     field_dist_cd_dist: 'CD_DIST',
 
-    field_codigou_dm: 'CODIGOU',
-    field_concesion_dm: 'CONCESION',
-    field_sustancia_dm: 'SUSTANCIA',
+    // // Campos DM Ingemmet
+    // field_codigou_dm: 'CODIGOU',
+    // field_concesion_dm: 'CONCESION',
+    // field_sustancia_dm: 'SUSTANCIA',
+
+    //  Campos DM Minem
+    field_codigou_dm: 'ID_UNIDAD',
+    field_concesion_dm: 'NOMBRE',
+    field_sustancia_dm: 'ID_CLASE_SUSTANCIA',
 
     // Campos DC
     field_id: 'ID', // Objectid del minero informal
@@ -519,7 +525,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         self_cw.ap_registros_encontrados_cw.innerHTML = '';
         switch (self_cw.controller_query) {
             case 'dc':
-                self_cw._applyQueryDC();
+                // self_cw._applyQueryDC()
+                self_cw._applyQueryDC2();
                 break;
             case 'dm':
                 self_cw._applyQueryDM();
@@ -529,7 +536,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         }
     },
 
-    _populateResultsDC(arrayResults) {
+    _populateResultsDC(arrayResults, enumerate_ini = 1) {
         arrayResults.forEach(function(r, i) {
             if (self_cw.temporal_class_results) {
                 var newRow = self_cw.temporal_class_results;
@@ -540,7 +547,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
             newRow.style.display = 'block';
 
             var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
-            newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${i+1}. ${r[self_cw.field_minero_informal]}`;
+            newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${enumerate_ini}. ${r[self_cw.field_minero_informal]}`;
             // newRow.getElementsByClassName('title_registros_cw')[0].id = r[self_cw.field_id];
             newRow.getElementsByClassName('container_head_registros_cw')[0].id = r[self_cw.field_id];
             // dojo.connect(nodeTitle, 'onclick', self_cw._showPopupRowSelectedClick);
@@ -557,6 +564,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
             newRow.getElementsByClassName('detalle_registros_resultados_cw')[0].innerHTML = fieldsListNode;
 
             self_cw.ap_registros_encontrados_cw.appendChild(newRow);
+            enumerate_ini = enumerate_ini + 1
         });
         dojo.query('.container_head_registros_cw').on('click', self_cw._showPopupRowSelectedClick);
         dojo.query('.codigou_cw').on('click', self_cw._zoomDmExtentToMap);
@@ -834,7 +842,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                     if (results.count) {
                         self_cw.map.setExtent(results.extent, true)
                     } else {
-                        self_cw._showMessage(self_cw.nls.none_element_pl);
+                        // self_cw._showMessage(self_cw.nls.none_element_pl);
                     }
                 }, function(error) {
                     self_cw._showMessage(`${self_cw.nls.error_query_feature} ${feature.title} (${query.where})\n${error.message}`);
@@ -855,6 +863,14 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
             backgroundOpacity: 0
         });
         this.busyIndicator.show();
+
+        // var panel = this.getPanel();
+        // var pos = panel.position;
+        // pos.width = 450;
+        // panel.setPosition(pos);
+        // panel.panelManager.normalizePanel(panel);
+
+
         self_cw._addEventToTabsOptions();
         self_cw._addEventToLayerQuery();
         self_cw._getDataByTipoPersona();
@@ -908,4 +924,322 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     // resize(){
     //   console.log('Consulta_wgt::resize');
     // }
+
+    numero_registros: 0,
+    numero_paginas: 0,
+    registros_pagina: 1000,
+    pagina_actual: 1,
+    grupo_actual: 0,
+    grupos_paginas: [],
+    factor: 4,
+    whereDefinition: '',
+
+    _queryDcGeneral() {
+        query = new Query();
+        query.where = self_cw.whereDefinition;
+        var feature_dc = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc);
+        feature_dc.hide();
+        feature_dc.setFilter('1=1');
+        feature_dc.getLayerObject().then(
+            function(response) {
+                response.queryCount(query, function(results) {
+                    self_cw.numero_registros = results
+                    self_cw.ap_indicador_resultados_cw.innerText = results;
+                    self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
+
+                    self_cw._generatePages();
+                    self_cw._queryDcByPage();
+                })
+            });
+    },
+
+    _queryDcByPage(n = 1) {
+        self_cw.busyIndicator.show();
+
+        if (self_cw.numero_registros == 0) {
+            self_cw.busyIndicator.hide();
+            self_cw.ap_titulo_registros_resultados_cw.innerText = '';
+            self_cw.ap_resultados_cw.click();
+            return;
+        };
+
+        let query = new Query();
+        query.where = self_cw.whereDefinition;
+        query.num = self_cw.registros_pagina;
+        query.start = n == 1 ? 0 : (n - 1) * self_cw.registros_pagina;
+        query.orderByFields = [self_cw.field_id];
+
+        var start = query.start + 1
+        var fin = query.start + query.num > self_cw.numero_registros ? self_cw.numero_registros : self_cw.pagina_actual * query.num
+        self_cw.ap_titulo_registros_resultados_cw.innerText = String(start) + ' - ' + String(fin)
+
+        // Filtro a capa DC visible en la TOC
+        var id = self_cw.config.layer_id_dc;
+        var feature = self_cw.layersMap.getLayerInfoById(id);
+        feature.hide();
+        feature.setFilter('1=1');
+        // feature.setFilter(query);
+        // feature.show();
+
+        // Filtro a capa DC sistema no visible en la TOC
+        var id_sys = self_cw.config.layer_id_dc_sys;
+        var feature_sys = self_cw.layersMap.getLayerInfoById(id_sys);
+        feature_sys.hide();
+        feature_sys.setFilter('1=1');
+        // feature_sys.show();
+
+        // Realizando el query a la capa
+        feature.layerObject.queryFeatures(query, function(result) {
+            var rowcount = result.features.length;
+            if (rowcount) {
+                self_cw.controller_layer_query = true;
+            }
+            // self_cw.ap_indicador_resultados_cw.innerText = rowcount;
+            // self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
+
+            var data = result.features.map((i) => i.attributes);
+
+            let ids = data.map((i) => i[self_cw.field_id])
+            let ids_join = ids.join(', ')
+            let query_ids = self_cw.field_id + ' IN (' + ids_join + ')'
+
+
+            feature.setFilter(query_ids);
+            feature.show();
+
+            feature_sys.setFilter(query_ids);
+            feature_sys.show();
+
+            self_cw._populateResultsDC(data, start)
+
+            self_cw.ap_none_resultados_opcion_cw.hidden = true;
+            var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
+            if (!class_list_container_resultados.contains('active')) {
+                self_cw.container_resultados_opcion_cw.classList.toggle('active');
+            }
+            self_cw.ap_resultados_cw.click();
+            self_cw.busyIndicator.hide();
+        });
+
+        feature_sys.layerObject.queryExtent(query, (results) => {
+            if (results.count) {
+                self_cw.map.setExtent(results.extent, true);
+            }
+        });
+
+        if (self_cw.numero_paginas <= 1) {
+            self_cw.ap_anterior_page_cw.setAttribute('disabled', true)
+            self_cw.ap_siguiente_page_cw.setAttribute('disabled', true)
+            return;
+        }
+
+        if (n == 1) {
+            self_cw.ap_anterior_page_cw.setAttribute('disabled', true)
+            self_cw.ap_siguiente_page_cw.removeAttribute('disabled')
+        } else if (n == self_cw.numero_paginas) {
+            self_cw.ap_anterior_page_cw.removeAttribute('disabled')
+            self_cw.ap_siguiente_page_cw.setAttribute('disabled', true)
+        } else {
+            self_cw.ap_anterior_page_cw.removeAttribute('disabled')
+            self_cw.ap_siguiente_page_cw.removeAttribute('disabled')
+        }
+
+    },
+
+    _queryDcByPageEvent(evt) {
+        // Obtiene el numero de la pagina
+        let page = evt.target.innerText;
+
+        // Si hace click sobre la misma pagina la funcion no debe proceder
+        // if (page == self_cw.pagina_actual) {
+        //     return;
+        // }
+
+        self_cw.pagina_actual = parseInt(page);
+        self_cw.ap_registros_encontrados_cw.innerHTML = '';
+
+        // Filtro de elementos
+        self_cw._queryDcByPage(self_cw.pagina_actual);
+
+        // Remover la pagina anterior seleccionada
+        dojo.query('.is-current').toggleClass('is-current');
+
+        // Activar la pagina actual seleccionada
+        evt.target.classList.toggle('is-current')
+
+        console.log('habilitar anterior y siguiente')
+    },
+
+    _nextPage(evt) {
+        self_cw.pagina_actual = self_cw.pagina_actual == self_cw.numero_paginas ? self_cw.pagina_actual : self_cw.pagina_actual + 1;
+
+        if (!self_cw.grupos_paginas[self_cw.grupo_actual].includes(self_cw.pagina_actual)) {
+            self_cw.grupo_actual = self_cw.grupo_actual == self_cw.grupos_paginas.length - 1 ? self_cw.grupo_actual : self_cw.grupo_actual + 1;
+            self_cw._generatePagesFromArray(self_cw.grupos_paginas[self_cw.grupo_actual], self_cw.pagina_actual)
+        }
+        dojo.query(`#page_${self_cw.pagina_actual}_cw`)[0].click();
+    },
+
+    _backPage(evt) {
+        self_cw.pagina_actual = self_cw.pagina_actual == 1 ? self_cw.pagina_actual : self_cw.pagina_actual - 1;
+        if (!self_cw.grupos_paginas[self_cw.grupo_actual].includes(self_cw.pagina_actual)) {
+            self_cw.grupo_actual = self_cw.grupo_actual == 0 ? self_cw.grupo_actual : self_cw.grupo_actual - 1;
+            self_cw._generatePagesFromArray(self_cw.grupos_paginas[self_cw.grupo_actual], self_cw.pagina_actual)
+        }
+        dojo.query(`#page_${self_cw.pagina_actual}_cw`)[0].click();
+    },
+
+    _generatePages() {
+        if (self_cw.numero_registros == 0) {
+            self_cw.ap_pagination_cw.classList.remove('paginationActive');
+            self_cw.ap_pagination_list_cw.innerHTML = '';
+            self_cw.busyIndicator.hide();
+            return
+        }
+        if (!self_cw.ap_pagination_cw.classList.contains('paginationActive')) {
+            self_cw.ap_pagination_cw.classList.add('paginationActive');
+        }
+        self_cw.numero_paginas = Math.ceil(self_cw.numero_registros / self_cw.registros_pagina);
+        self_cw.grupos_paginas = self_cw._generateGroupsPages(self_cw.numero_paginas, self_cw.factor);
+        self_cw.grupo_actual = 0 // Es el primer grupo
+        self_cw.pagina_actual = 1 // Segundo parametro es 1 porque es la primera pagina
+
+        self_cw._generatePagesFromArray(self_cw.grupos_paginas[self_cw.grupo_actual], self_cw.pagina_actual);
+    },
+
+    _generateGroupsPages(numero_paginas, factor) {
+        let paginas = Array.from(Array(numero_paginas + 1).keys()).slice(1);
+        let grupos = Math.ceil(numero_paginas / factor);
+        var grupos_array = Array.from(Array(grupos).keys());
+        let grupos_paginas = grupos_array.map((i) => paginas.slice(i * factor, (i + 1) * factor));
+        return grupos_paginas;
+    },
+
+    _generatePagesFromArray(pages, val) {
+        let pages_html_array = [];
+        pages.forEach(function(n) {
+            let class_element = n == val ? 'pagination-link is-current pages_result_cw' : 'pagination-link pages_result_cw'
+            pages_html_array.push(`<li><a id="page_${n}_cw" class="${class_element}" aria-label="Pagina ${n}">${n}</a></li>`)
+        });
+
+        if (self_cw.grupo_actual == 0 && self_cw.grupos_paginas.length == 1) {
+            // No hace nada
+        } else if (self_cw.grupo_actual == 0 && self_cw.grupos_paginas.length > 1) {
+            pages_html_array.push('<li><span class="pagination-ellipsis">&hellip;</span></li>')
+        } else if (self_cw.grupo_actual == self_cw.grupos_paginas.length - 1) {
+            pages_html_array.splice(0, 0, '<li><span class="pagination-ellipsis">&hellip;</span></li>');
+        } else {
+            pages_html_array.push('<li><span class="pagination-ellipsis">&hellip;</span></li>');
+            pages_html_array.splice(0, 0, '<li><span class="pagination-ellipsis">&hellip;</span></li>');
+        }
+
+        pages_html = pages_html_array.join('');
+        self_cw.ap_pagination_list_cw.innerHTML = pages_html;
+        dojo.query('.pages_result_cw').on('click', self_cw._queryDcByPageEvent);
+    },
+
+    _applyQueryDC2() {
+        whereDefinitionArray = []
+
+        if (self_cw.input_ruc_dc_cw.value != '') {
+            var ruc_dc = `(${self_cw.field_m_ruc} like '%${self_cw.input_ruc_dc_cw.value}%')`;
+            whereDefinitionArray.push(ruc_dc);
+        }
+
+        var nombre_dc = `(lower(${self_cw.field_minero_informal}) like lower('%${self_cw.input_nombre_dc_cw.value}%'))`;
+        whereDefinitionArray.push(nombre_dc);
+
+        if (self_cw.select_tipo_persona_cw.value != '') {
+            var tipo_persona_dc = `(${self_cw.field_tipo_persona} like '%${self_cw.select_tipo_persona_cw.value}%')`;
+            whereDefinitionArray.push(tipo_persona_dc);
+        };
+
+        var codigou_dc = `(upper(${self_cw.field_id_unidad}) like upper('%${self_cw.input_codigou_dc_cw.value}%'))`;
+        whereDefinitionArray.push(codigou_dc);
+
+        var nombredm_dc = `(lower(${self_cw.field_derecho_minero}) like lower('%${self_cw.input_nombre_dm_dc_cw.value}%'))`;
+        whereDefinitionArray.push(nombredm_dc);
+
+        var ubigeo_dc = `(${self_cw.field_id_ubigeo_inei} like '${self_cw.controller_ubigeo}%')`;
+        whereDefinitionArray.push(ubigeo_dc);
+
+        self_cw.whereDefinition = whereDefinitionArray.join(' and ');
+        self_cw._queryDcGeneral();
+        // self_cw._queryDcByPage();
+        // self_cw.ap_none_resultados_opcion_cw.hidden = true;
+        // let class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
+        // if (!class_list_container_resultados.contains('active')) {
+        //     self_cw.container_resultados_opcion_cw.classList.toggle('active');
+        // }
+        // self_cw.ap_resultados_cw.click();
+        // this.busyIndicator.hide();
+    }
+    // _applyQueryDC() {
+    //     whereDefinitionArray = []
+
+    //     if (self_cw.input_ruc_dc_cw.value != '') {
+    //         var ruc_dc = `(${self_cw.field_m_ruc} like '%${self_cw.input_ruc_dc_cw.value}%')`;
+    //         whereDefinitionArray.push(ruc_dc);
+    //     }
+
+    //     var nombre_dc = `(lower(${self_cw.field_minero_informal}) like lower('%${self_cw.input_nombre_dc_cw.value}%'))`;
+    //     whereDefinitionArray.push(nombre_dc);
+
+    //     if (self_cw.select_tipo_persona_cw.value != '') {
+    //         var tipo_persona_dc = `(${self_cw.field_tipo_persona} like '%${self_cw.select_tipo_persona_cw.value}%')`;
+    //         whereDefinitionArray.push(tipo_persona_dc);
+    //     };
+
+    //     var codigou_dc = `(upper(${self_cw.field_id_unidad}) like upper('%${self_cw.input_codigou_dc_cw.value}%'))`;
+    //     whereDefinitionArray.push(codigou_dc);
+
+    //     var nombredm_dc = `(lower(${self_cw.field_derecho_minero}) like lower('%${self_cw.input_nombre_dm_dc_cw.value}%'))`;
+    //     whereDefinitionArray.push(nombredm_dc);
+
+    //     var ubigeo_dc = `(${self_cw.field_id_ubigeo_inei} like '${self_cw.controller_ubigeo}%')`;
+    //     whereDefinitionArray.push(ubigeo_dc);
+
+    //     var whereDefinition = whereDefinitionArray.join(' and ');
+
+
+    //     // Filtro a capa DC visible en la TOC
+    //     var id = self_cw.config.layer_id_dc;
+    //     var feature = self_cw.layersMap.getLayerInfoById(id);
+    //     feature.setFilter(whereDefinition);
+    //     feature.show();
+
+    //     // Filtro a capa DC sistema no visible en la TOC
+    //     var id_sys = self_cw.config.layer_id_dc_sys;
+    //     var feature_sys = self_cw.layersMap.getLayerInfoById(id_sys);
+    //     feature_sys.setFilter(whereDefinition);
+    //     feature_sys.show();
+
+    //     // Realizando el query a la capa
+    //     feature.layerObject.queryFeatures(whereDefinition, function(result) {
+    //         var rowcount = result.features.length;
+    //         if (rowcount) {
+    //             self_cw.controller_layer_query = true;
+    //         }
+    //         self_cw.ap_indicador_resultados_cw.innerText = rowcount;
+    //         self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
+
+    //         var data = result.features.map((i) => i.attributes);
+
+    //         self_cw._populateResultsDC(data)
+
+    //         self_cw.ap_none_resultados_opcion_cw.hidden = true;
+    //         var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
+    //         if (!class_list_container_resultados.contains('active')) {
+    //             self_cw.container_resultados_opcion_cw.classList.toggle('active');
+    //         }
+    //         self_cw.ap_resultados_cw.click();
+
+    //     });
+
+    //     feature_sys.layerObject.queryExtent(whereDefinition, (results) => {
+    //         if (results.count) {
+    //             self_cw.map.setExtent(results.extent, true);
+    //         }
+    //     })
+    // },
 });

@@ -26,6 +26,14 @@
     width: 100%;
     top: 115px;
     bottom: 50px; }
+  .localizar-wgt .table_help_lw {
+    width: 50%;
+    margin-right: auto;
+    margin-left: auto; }
+  .localizar-wgt .help_x_lw {
+    display: none; }
+  .localizar-wgt .help_y_lw {
+    display: none; }
   .localizar-wgt .is-active {
     display: block; }
 
