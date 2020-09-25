@@ -8,11 +8,15 @@ import Query from "esri/tasks/query";
 import QueryTask from "esri/tasks/QueryTask";
 import StatisticDefinition from "esri/tasks/StatisticDefinition";
 // import InfoTemplate from "esri/InfoTemplate";
-// import FeatureLayer from "esri/layers/FeatureLayer";
+import FeatureLayer from "esri/layers/FeatureLayer";
+
+import GraphicsLayer from "esri/layers/GraphicsLayer";
+import Graphic from 'esri/graphic';
+
 import SimpleFillSymbol from "esri/symbols/SimpleFillSymbol";
-import SimpleLineSymbol from "esri/symbols/SimpleLineSymbol";
-import Color from "esri/Color";
-// import Graphic from "esri/graphic";
+import SimpleLineSymbol from 'esri/symbols/SimpleLineSymbol';
+import SimpleMarkerSymbol from 'esri/symbols/SimpleMarkerSymbol';
+import Color from 'dojo/_base/Color';
 
 import Message from "jimu/dijit/Message";
 // import 'jimu/dijit/LoadingIndicator';
@@ -46,6 +50,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     field_dist_nm_dist: 'NM_DIST',
     field_dist_cd_dist: 'CD_DIST',
 
+
     // // Campos DM Ingemmet
     // field_codigou_dm: 'CODIGOU',
     // field_concesion_dm: 'CONCESION',
@@ -72,6 +77,18 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
     temporal_class_results: '',
 
+    feature_dc: null,
+    feature_dm: null,
+
+    numero_registros: 0,
+    numero_paginas: 0,
+    registros_pagina: 1000,
+    pagina_actual: 1,
+    grupo_actual: 0,
+    grupos_paginas: [],
+    factor: 4,
+    whereDefinition: '',
+
     // add additional properties here
 
     // methods to communication with app container:
@@ -80,6 +97,12 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         this.inherited(arguments);
         // console.log('Consulta_wgt::postCreate');;
         this._getAllLayers();
+        this.feature_dc = self_cw.layersMap.getLayerInfoById(this.config.layer_id_dc);
+        this.feature_dm = self_cw.layersMap.getLayerInfoById(this.config.layer_id_dm);
+        this.feature_dep = this.layersMap.getLayerInfoById(this.config.layer_id_dep);
+        this.feature_prov = this.layersMap.getLayerInfoById(this.config.layer_id_prov);
+        this.feature_dist = this.layersMap.getLayerInfoById(this.config.layer_id_dist);
+
     },
 
     _getAllLayers() {
@@ -125,14 +148,14 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     // Metodos para agregar opciones a las etiquetas 'select'
     _getDataByTipoPersona() {
         let id = this.config.layer_id_dc
-        let feature_dc = this.layersMap.getLayerInfoById(id);
+            // let feature_dc = this.layersMap.getLayerInfoById(id);
         let query = new Query();
         query.where = `${this.field_tipo_persona} IS NOT NULL`;
         query.returnGeometry = false;
         query.returnDistinctValues = true;
         query.outFields = [this.field_tipo_persona];
 
-        feature_dc.layerObject.queryFeatures(query, function(results) {
+        self_cw.feature_dc.layerObject.queryFeatures(query, function(results) {
             let features = results.features;
             if (features.length) {
                 features.forEach(i => {
@@ -227,14 +250,17 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         // Definiendo el objeto Query para obtener las provincias del departamento
         let query = new Query();
         query.where = `${this.field_dep_cd_depa} = '${cd_depa}'`;
+
         query.returnGeometry = false;
         query.outFields = [this.field_prov_nm_prov, this.field_prov_cd_prov];
         query.orderByFields = [this.field_prov_nm_prov];
 
+        self_cw._zoomExtendSelected(self_cw.feature_dep, query.where);
+
         // Ejecucion de consulta para obtener las opciones de provincias
         queryTask.execute(query, function(results) {
+            let fragment = document.createDocumentFragment();
             // Zoom al departamento seleccionado
-            self_cw._zoomExtendSelected(self_cw.config.layer_id_dep, query.where);
             let features = results.features;
             // Si se encontraron resultados
             if (features.length) {
@@ -243,13 +269,16 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                     let opt = document.createElement("option");
                     opt.value = i.attributes[self_cw.field_prov_cd_prov];
                     opt.text = i.attributes[self_cw.field_prov_nm_prov];
-                    self_cw.provincia_cw.add(opt);
+                    // self_cw.provincia_cw.add(opt);
+                    fragment.appendChild(opt);
                 })
                 let opt = document.createElement("option");
                 opt.value = '';
                 opt.text = 'Todos';
                 opt.selected = true;
-                self_cw.provincia_cw.add(opt);
+                fragment.appendChild(opt);
+                // self_cw.provincia_cw.add(opt);
+                self_cw.provincia_cw.appendChild(fragment);
 
             } else {
                 // Notificar si no se encontraron elementos
@@ -307,10 +336,13 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         query.outFields = [this.field_dist_nm_dist, this.field_dist_cd_dist];
         query.orderByFields = [this.field_dist_nm_dist];
 
+        self_cw._zoomExtendSelected(self_cw.feature_prov, query.where);
+
         // Ejecucion de consulta para obtener las opciones de distritos
         queryTask.execute(query, function(results) {
+            let fragment = document.createDocumentFragment();
             // Zoom a la provincia seleccionada
-            self_cw._zoomExtendSelected(self_cw.config.layer_id_prov, query.where);
+            // self_cw._zoomExtendSelected(self_cw.config.layer_id_prov, query.where);
             self_cw.distrito_cw.innerHTML = "";
             let features = results.features;
             // Si se encontraron resultados
@@ -319,13 +351,16 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                     let opt = document.createElement("option");
                     opt.value = i.attributes[self_cw.field_dist_cd_dist];
                     opt.text = i.attributes[self_cw.field_dist_nm_dist];
-                    self_cw.distrito_cw.add(opt);
+                    // self_cw.distrito_cw.add(opt);
+                    fragment.appendChild(opt)
                 })
                 let opt = document.createElement("option");
                 opt.value = '';
                 opt.text = 'Todos';
                 opt.selected = true;
-                self_cw.distrito_cw.add(opt);
+                // self_cw.distrito_cw.add(opt);
+                fragment.appendChild(opt);
+                self_cw.distrito_cw.appendChild(fragment)
             } else {
                 // Notificar si no se encontraron elementos
                 self_cw._showMessage(`${self_cw.nls.error_distrito_count}`);
@@ -351,7 +386,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
             return
         }
         this.controller_ubigeo = cd_dist;
-        this._zoomExtendSelected(this.config.layer_id_dist, whereDefinition);
+        this._zoomExtendSelected(this.feature_dist, whereDefinition);
+        // this._zoomExtendSelected(this.config.layer_id_dist, whereDefinition);
     },
 
     // Metodos dedicados al frontend del widget
@@ -413,7 +449,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     // Interaccion con el mapa
 
     _openPopupAutocamitcally(featureInfo, center, whereDefinition) {
-        var query = new Query();
+        let query = new Query();
         query.where = whereDefinition;
         featureInfo.layerObject.queryFeatures(query, function(results) {
             self_cw.map.infoWindow.setFeatures(results.features);
@@ -435,10 +471,10 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
         // self_cw._applyQueryDM.click()
         let id = evt.currentTarget.innerText;
-        query = new Query();
+        let query = new Query();
         query.where = `${self_cw.field_codigou_dm} = '${id}'`
-        var id_layer = self_cw.config.layer_id_dm;
-        var feature = self_cw.layersMap.getLayerInfoById(id_layer);
+        let id_layer = self_cw.config.layer_id_dm;
+        let feature = self_cw.layersMap.getLayerInfoById(id_layer);
         feature.setFilter(query.where);
         feature.show();
 
@@ -473,10 +509,10 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         })
     },
 
-    _zoomExtendSelected(idService, whereDefinition) {
-        var query = new Query();
+    _zoomExtendSelected(feature, whereDefinition) {
+        let query = new Query();
         query.where = whereDefinition;
-        var feature = this.layersMap.getLayerInfoById(idService);
+        // let feature = this.layersMap.getLayerInfoById(idService);
         feature.getLayerObject().then(function(results) {
             results.queryExtent(query, function(res) {
                 if (res.count) {
@@ -493,32 +529,6 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         });
     },
 
-    // _zoomExtentByQueryTask(url, query) {
-    //     let queryTask = new QueryTask(url);
-    //     queryTask.executeForExtent(query, function(results) {
-    //         if (results.count) {
-    //             let extent = results.extent;
-    //             this.map.setExtent(extent, true);
-    //         } else {
-    //             this._showMessage('');
-    //         }
-    //     }, function(error) {
-    //         this._showMessage('', type = 'error')
-    //     })
-    // },
-
-    // _zoomExtendByQueryExtent(layerObject, query) {
-    //     layerObject.queryExtent(query, function(results) {
-    //         if (results.count) {
-    //             this.map.setExtent(results.extent, true);
-    //         } else {
-    //             this._showMessage('');
-    //         }
-    //     }, function(error) {
-    //         this._showMessage('', type = 'error');
-    //     })
-    // },
-
     // Proceso que realiza la consulta
     _applyQuery(evt) {
         this.busyIndicator.show();
@@ -529,7 +539,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                 self_cw._applyQueryDC2();
                 break;
             case 'dm':
-                self_cw._applyQueryDM();
+                // self_cw._applyQueryDM();
+                self_cw._applyQueryDM2()
                 break;
             default:
                 break;
@@ -537,6 +548,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     },
 
     _populateResultsDC(arrayResults, enumerate_ini = 1) {
+        let fragment = document.createDocumentFragment();
         arrayResults.forEach(function(r, i) {
             if (self_cw.temporal_class_results) {
                 var newRow = self_cw.temporal_class_results;
@@ -563,9 +575,11 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             newRow.getElementsByClassName('detalle_registros_resultados_cw')[0].innerHTML = fieldsListNode;
 
-            self_cw.ap_registros_encontrados_cw.appendChild(newRow);
+            fragment.appendChild(newRow);
+            // self_cw.ap_registros_encontrados_cw.appendChild(newRow);
             enumerate_ini = enumerate_ini + 1
         });
+        self_cw.ap_registros_encontrados_cw.appendChild(fragment);
         dojo.query('.container_head_registros_cw').on('click', self_cw._showPopupRowSelectedClick);
         dojo.query('.codigou_cw').on('click', self_cw._zoomDmExtentToMap);
         this.busyIndicator.hide();
@@ -588,16 +602,16 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         // let id = evt.currentTarget.parentElement.getAttribute('value');
         let feature = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc)
 
-        let feature_sys = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc_sys)
+        // let feature_sys = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc_sys)
 
         let query = new Query();
-        query.where = `${self_cw.field_id_unidad} = '${id}'`;
+        query.where = `(${self_cw.field_id_unidad} = '${id}') and (${self_cw.field_m_ruc} is not null)`;
 
         feature.setFilter(query.where);
         feature.show();
 
-        feature_sys.setFilter(query.where);
-        feature_sys.show();
+        // feature_sys.setFilter(query.where);
+        // feature_sys.show();
 
         // evt.currentTarget.parentElement.classList.toggle('active')
 
@@ -630,7 +644,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         })
     },
 
-    _populateResultsDM(arrayResults) {
+    _populateResultsDM(arrayResults, enumerate_ini = 1) {
+        let fragment = document.createDocumentFragment();
         arrayResults.forEach(function(r, i) {
             if (self_cw.temporal_class_results) {
                 var newRow = self_cw.temporal_class_results;
@@ -640,8 +655,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             newRow.style.display = 'block';
 
-            var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
-            newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${i+1}. ${self_cw.nls.field_codigou_dm}: ${r[self_cw.field_codigou_dm]}`;
+            // var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
+            newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${enumerate_ini}. ${self_cw.nls.field_codigou_dm}: ${r[self_cw.field_codigou_dm]}`;
             // newRow.getElementsByClassName('title_registros_cw')[0].id = r[self_cw.field_codigou_dm];
             newRow.getElementsByClassName('container_head_registros_cw')[0].id = r[self_cw.field_codigou_dm];
             // dojo.connect(nodeTitle, 'onclick', self_cw._showPopupRowSelectedClickDM);
@@ -657,10 +672,10 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             newRow.getElementsByClassName('detalle_registros_resultados_cw')[0].innerHTML = fieldsListNode;
 
-
-
-            self_cw.ap_registros_encontrados_cw.appendChild(newRow);
+            fragment.appendChild(newRow);
+            enumerate_ini = enumerate_ini + 1;
         })
+        self_cw.ap_registros_encontrados_cw.appendChild(fragment);
         dojo.query('.container_head_registros_cw').on('click', self_cw._showPopupRowSelectedClickDM);
         dojo.query('.reinfos_cw').on('click', self_cw._showReinfos);
         this.busyIndicator.hide();
@@ -674,22 +689,31 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         // }
         var id_row = evt.currentTarget.id;
 
-        var id_layer = self_cw.config.layer_id_dc;
-        var id_layer_sys = self_cw.config.layer_id_dc_sys;
+        // var id_layer = self_cw.config.layer_id_dc;
+        // var id_layer_sys = self_cw.config.layer_id_dc_sys;
 
-        var feature = self_cw.layersMap.getLayerInfoById(id_layer);
-        var feature_sys = self_cw.layersMap.getLayerInfoById(id_layer_sys);
+        // var feature = self_cw.layersMap.getLayerInfoById(id_layer);
+        // var feature_sys = self_cw.layersMap.getLayerInfoById(id_layer_sys);
 
-        var whereDefinition = `${self_cw.field_id} = ${id_row}`
+        // let whereDefinition = `${self_cw.field_id} = ${id_row}`
+        let query = new Query();
+        query.where = `${self_cw.field_id} = ${id_row}`
 
-        feature_sys.setFilter(whereDefinition);
+        // self_cw.feature_dc_sys.hide();
+        // self_cw.feature_dc_sys.setFilter('');
+        // self_cw.feature_dc_sys.setFilter(query.where);
+        // self_cw.feature_dc_sys.show();
 
-        feature_sys.layerObject.queryFeatures(whereDefinition, function(results) {
-            var center = results.features[0].geometry;
+        // feature_sys.layerObject.queryFeatures(whereDefinition, function(results) {
+        self_cw.feature_dc.layerObject.queryFeatures(query, function(results) {
+            let center = results.features[0].geometry;
             if (!center) {
-                self_cw._showMessage(self_cw.nls.error_none_geometry)
+                self_cw._showMessage(self_cw.nls.error_none_geometry);
+                return;
             }
-            self_cw._openPopupAutocamitcally(feature, center, whereDefinition);
+            self_cw.map.infoWindow.setFeatures(results.features);
+            self_cw.map.infoWindow.show(center, self_cw.map.getInfoWindowAnchor(center));
+            self_cw.map.centerAt(center);
         })
 
     },
@@ -697,103 +721,35 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
 
     _showPopupRowSelectedClickDM(evt) {
-        // let id_row = evt.currentTarget.getElementsByClassName('title_registros_cw')[0].id;
         let id_row = evt.currentTarget.id;
 
-        let id_layer = self_cw.config.layer_id_dm;
+        let query = new Query();
+        query.where = `${self_cw.field_codigou_dm} = '${id_row}'`;
+        query.returnGeometry = true;
+        query.outFields = ['*'];
 
-        let feature = self_cw.layersMap.getLayerInfoById(id_layer);
+        let queryTask = new QueryTask(self_cw.feature_dm.getUrl());
+        queryTask.execute(query, function(results) {
+            let center = results.features[0].geometry.getCentroid();
+            if (!center) {
+                self_cw._showMessage(self_cw.nls.error_none_geometry);
+                return;
+            };
 
-        let whereDefinition = `${self_cw.field_codigou_dm} = '${id_row}'`
-
-        query = new Query();
-        query.where = whereDefinition;
-
-        // feature_sys.setFilter(whereDefinition);
-
-        feature.getLayerObject().then(function(response) {
-            response.queryFeatures(query, function(results) {
-                if (results.features.length) {
-                    let center = results.features[0].geometry.getCentroid();
+            self_cw.feature_dm.layerObject.selectFeatures(query, FeatureLayer.SELECTION_NEW).then(
+                function(response) {
+                    self_cw.map.infoWindow.setFeatures(response);
+                    self_cw.map.infoWindow.show(center);
                     let ext = results.features[0].geometry.getExtent();
-                    self_cw._openPopupAutocamitcally2(results, center, query);
-                    self_cw.map.setExtent(ext, true);
+                    self_cw.map.setExtent(ext.expand(1.6), true);
+                },
+                function(error) {
+                    console.log(error)
                 }
-            }, function(error) {
-                self_cw._showMessage(`${self_cw.nls.error_query_feature} ${feature.title} (${query.where})\n${error.message}`);
-            })
+            );
         }, function(error) {
-            self_cw._showMessage(`${self_cw.nls.error_service} ${feature.title}\n${error.message}`, type = 'error');
+            self_cw._showMessage(`${self_cw.nls.error_query_feature} ${self_cw.feature_dm.title} (${query.where})\n${error.message}`);
         });
-    },
-
-    _applyQueryDC() {
-        whereDefinitionArray = []
-
-        if (self_cw.input_ruc_dc_cw.value != '') {
-            var ruc_dc = `(${self_cw.field_m_ruc} like '%${self_cw.input_ruc_dc_cw.value}%')`;
-            whereDefinitionArray.push(ruc_dc);
-        }
-
-        var nombre_dc = `(lower(${self_cw.field_minero_informal}) like lower('%${self_cw.input_nombre_dc_cw.value}%'))`;
-        whereDefinitionArray.push(nombre_dc);
-
-        if (self_cw.select_tipo_persona_cw.value != '') {
-            var tipo_persona_dc = `(${self_cw.field_tipo_persona} like '%${self_cw.select_tipo_persona_cw.value}%')`;
-            whereDefinitionArray.push(tipo_persona_dc);
-        };
-
-        var codigou_dc = `(upper(${self_cw.field_id_unidad}) like upper('%${self_cw.input_codigou_dc_cw.value}%'))`;
-        whereDefinitionArray.push(codigou_dc);
-
-        var nombredm_dc = `(lower(${self_cw.field_derecho_minero}) like lower('%${self_cw.input_nombre_dm_dc_cw.value}%'))`;
-        whereDefinitionArray.push(nombredm_dc);
-
-        var ubigeo_dc = `(${self_cw.field_id_ubigeo_inei} like '${self_cw.controller_ubigeo}%')`;
-        whereDefinitionArray.push(ubigeo_dc);
-
-        var whereDefinition = whereDefinitionArray.join(' and ');
-
-
-        // Filtro a capa DC visible en la TOC
-        var id = self_cw.config.layer_id_dc;
-        var feature = self_cw.layersMap.getLayerInfoById(id);
-        feature.setFilter(whereDefinition);
-        feature.show();
-
-        // Filtro a capa DC sistema no visible en la TOC
-        var id_sys = self_cw.config.layer_id_dc_sys;
-        var feature_sys = self_cw.layersMap.getLayerInfoById(id_sys);
-        feature_sys.setFilter(whereDefinition);
-        feature_sys.show();
-
-        // Realizando el query a la capa
-        feature.layerObject.queryFeatures(whereDefinition, function(result) {
-            var rowcount = result.features.length;
-            if (rowcount) {
-                self_cw.controller_layer_query = true;
-            }
-            self_cw.ap_indicador_resultados_cw.innerText = rowcount;
-            self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
-
-            var data = result.features.map((i) => i.attributes);
-
-            self_cw._populateResultsDC(data)
-
-            self_cw.ap_none_resultados_opcion_cw.hidden = true;
-            var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
-            if (!class_list_container_resultados.contains('active')) {
-                self_cw.container_resultados_opcion_cw.classList.toggle('active');
-            }
-            self_cw.ap_resultados_cw.click();
-
-        });
-
-        feature_sys.layerObject.queryExtent(whereDefinition, (results) => {
-            if (results.count) {
-                self_cw.map.setExtent(results.extent, true);
-            }
-        })
     },
 
     _applyQueryDM() {
@@ -886,13 +842,13 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
             // this.map.graphics.clear();
         let whereDefinition = '1=1'
         lyr_dc = this.layersMap.getLayerInfoById(this.config.layer_id_dc);
-        lyr_dc_sys = this.layersMap.getLayerInfoById(this.config.layer_id_dc_sys);
+        // lyr_dc_sys = this.layersMap.getLayerInfoById(this.config.layer_id_dc_sys);
         lyr_dm = this.layersMap.getLayerInfoById(this.config.layer_id_dm);
         lyr_dc.hide();
-        lyr_dc_sys.hide();
+        // lyr_dc_sys.hide();
         lyr_dm.hide();
         lyr_dc.setFilter(whereDefinition);
-        lyr_dc_sys.setFilter(whereDefinition);
+        // lyr_dc_sys.setFilter(whereDefinition);
         lyr_dm.setFilter(whereDefinition);
         this.busyIndicator.hide()
         this.container_resultados_opcion_cw.classList.remove('active');
@@ -925,35 +881,61 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     //   console.log('Consulta_wgt::resize');
     // }
 
-    numero_registros: 0,
-    numero_paginas: 0,
-    registros_pagina: 1000,
-    pagina_actual: 1,
-    grupo_actual: 0,
-    grupos_paginas: [],
-    factor: 4,
-    whereDefinition: '',
-
     _queryDcGeneral() {
-        query = new Query();
+        let query = new Query();
         query.where = self_cw.whereDefinition;
-        var feature_dc = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc);
-        feature_dc.hide();
-        feature_dc.setFilter('1=1');
-        feature_dc.getLayerObject().then(
-            function(response) {
-                response.queryCount(query, function(results) {
-                    self_cw.numero_registros = results
-                    self_cw.ap_indicador_resultados_cw.innerText = results;
-                    self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
+        // var feature_dc = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc);
+        self_cw.feature_dc.hide();
+        self_cw.feature_dc.setFilter('');
+        self_cw.feature_dc.getLayerObject().then(
+                function(response) {
+                    response.queryCount(query, function(results) {
+                        self_cw.numero_registros = results
+                        self_cw.ap_indicador_resultados_cw.innerText = results;
+                        self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
 
-                    self_cw._generatePages();
-                    self_cw._queryDcByPage();
+                        self_cw._generatePages();
+                        self_cw._queryDcByPage();
+                    }, function(error) {
+                        self_cw._showMessage(error.message, type = 'error')
+                    })
                 })
+            .catch((error) => {
+                self_cw._showMessage(error.message, type = 'error')
+                self_cw.busyIndicator_lw.hide();
+            });
+    },
+
+    queryDmGeneral() {
+        let query = new Query();
+        query.where = self_cw.whereDefinition;
+        query.obe
+        self_cw.feature_dm.hide();
+        self_cw.feature_dm.setFilter('');
+        self_cw.feature_dm.getLayerObject()
+            .then(
+                function(response) {
+                    response.queryIds(query, function(results) {
+                        // console.log(results);
+                        self_cw.numero_registros = results.length
+                        self_cw.ap_indicador_resultados_cw.innerText = results.length;
+                        self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
+
+                        self_cw._generatePages();
+                        self_cw._queryDmByPage();
+                        // self_cw.busyIndicator.hide();
+                    }, function(error) {
+                        self_cw._showMessage(error.message, type = 'error')
+                    })
+                })
+            .catch((error) => {
+                self_cw._showMessage(error.message, type = 'error')
+                self_cw.busyIndicator_lw.hide();
             });
     },
 
     _queryDcByPage(n = 1) {
+        // self_cw.feature_dc_sys.hide();
         self_cw.busyIndicator.show();
 
         if (self_cw.numero_registros == 0) {
@@ -964,6 +946,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         };
 
         let query = new Query();
+        query.returnGeometry = false;
         query.where = self_cw.whereDefinition;
         query.num = self_cw.registros_pagina;
         query.start = n == 1 ? 0 : (n - 1) * self_cw.registros_pagina;
@@ -973,23 +956,11 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         var fin = query.start + query.num > self_cw.numero_registros ? self_cw.numero_registros : self_cw.pagina_actual * query.num
         self_cw.ap_titulo_registros_resultados_cw.innerText = String(start) + ' - ' + String(fin)
 
-        // Filtro a capa DC visible en la TOC
-        var id = self_cw.config.layer_id_dc;
-        var feature = self_cw.layersMap.getLayerInfoById(id);
-        feature.hide();
-        feature.setFilter('1=1');
-        // feature.setFilter(query);
-        // feature.show();
-
-        // Filtro a capa DC sistema no visible en la TOC
-        var id_sys = self_cw.config.layer_id_dc_sys;
-        var feature_sys = self_cw.layersMap.getLayerInfoById(id_sys);
-        feature_sys.hide();
-        feature_sys.setFilter('1=1');
-        // feature_sys.show();
+        self_cw.feature_dc.hide();
+        self_cw.feature_dc.setFilter('');
 
         // Realizando el query a la capa
-        feature.layerObject.queryFeatures(query, function(result) {
+        self_cw.feature_dc.layerObject.queryFeatures(query, function(result) {
             var rowcount = result.features.length;
             if (rowcount) {
                 self_cw.controller_layer_query = true;
@@ -1004,11 +975,11 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
             let query_ids = self_cw.field_id + ' IN (' + ids_join + ')'
 
 
-            feature.setFilter(query_ids);
-            feature.show();
+            self_cw.feature_dc.setFilter(query_ids);
+            self_cw.feature_dc.show();
 
-            feature_sys.setFilter(query_ids);
-            feature_sys.show();
+            // self_cw.feature_dc_sys.setFilter(query_ids);
+            // self_cw.feature_dc_sys.show();
 
             self_cw._populateResultsDC(data, start)
 
@@ -1021,7 +992,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
             self_cw.busyIndicator.hide();
         });
 
-        feature_sys.layerObject.queryExtent(query, (results) => {
+        self_cw.feature_dc.layerObject.queryExtent(query, (results) => {
             if (results.count) {
                 self_cw.map.setExtent(results.extent, true);
             }
@@ -1046,14 +1017,86 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
     },
 
+    _queryDmByPage(n = 1) {
+        // self_cw.feature_dc_sys.hide();
+        self_cw.busyIndicator.show();
+
+        if (self_cw.numero_registros == 0) {
+            self_cw.busyIndicator.hide();
+            self_cw.ap_titulo_registros_resultados_cw.innerText = '';
+            self_cw.ap_resultados_cw.click();
+            return;
+        };
+
+        let query = new Query();
+        query.where = self_cw.whereDefinition;
+        query.returnGeometry = false;
+        query.num = self_cw.registros_pagina;
+        query.start = n == 1 ? 0 : (n - 1) * self_cw.registros_pagina;
+        query.orderByFields = [self_cw.field_id_unidad];
+
+        var start = query.start + 1
+        var fin = query.start + query.num > self_cw.numero_registros ? self_cw.numero_registros : self_cw.pagina_actual * query.num
+        self_cw.ap_titulo_registros_resultados_cw.innerText = String(start) + ' - ' + String(fin)
+
+        self_cw.feature_dm.hide();
+        self_cw.feature_dm.setFilter('');
+
+        // Realizando el query a la capa
+        self_cw.feature_dm.layerObject.queryFeatures(query, function(result) {
+            let rowcount = result.features.length;
+            if (rowcount) {
+                self_cw.controller_layer_query = true;
+            }
+
+            let data = result.features.map((i) => i.attributes);
+
+            let ids = data.map((i) => i[self_cw.field_id_unidad])
+            let ids_join = ids.join("', '")
+            let query_ids = self_cw.field_id_unidad + " IN ('" + ids_join + "')"
+
+
+            self_cw.feature_dm.setFilter(query_ids);
+            self_cw.feature_dm.show();
+
+            self_cw._populateResultsDM(data, start);
+
+            self_cw.ap_none_resultados_opcion_cw.hidden = true;
+            var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
+            if (!class_list_container_resultados.contains('active')) {
+                self_cw.container_resultados_opcion_cw.classList.toggle('active');
+            }
+            self_cw.ap_resultados_cw.click();
+            self_cw.busyIndicator.hide();
+        });
+
+        self_cw.feature_dm.layerObject.queryExtent(query, (results) => {
+            if (results.count) {
+                self_cw.map.setExtent(results.extent, true);
+            }
+        });
+
+        if (self_cw.numero_paginas <= 1) {
+            self_cw.ap_anterior_page_cw.setAttribute('disabled', true)
+            self_cw.ap_siguiente_page_cw.setAttribute('disabled', true)
+            return;
+        }
+
+        if (n == 1) {
+            self_cw.ap_anterior_page_cw.setAttribute('disabled', true)
+            self_cw.ap_siguiente_page_cw.removeAttribute('disabled')
+        } else if (n == self_cw.numero_paginas) {
+            self_cw.ap_anterior_page_cw.removeAttribute('disabled')
+            self_cw.ap_siguiente_page_cw.setAttribute('disabled', true)
+        } else {
+            self_cw.ap_anterior_page_cw.removeAttribute('disabled')
+            self_cw.ap_siguiente_page_cw.removeAttribute('disabled')
+        }
+    },
+
     _queryDcByPageEvent(evt) {
         // Obtiene el numero de la pagina
         let page = evt.target.innerText;
-
-        // Si hace click sobre la misma pagina la funcion no debe proceder
-        // if (page == self_cw.pagina_actual) {
-        //     return;
-        // }
 
         self_cw.pagina_actual = parseInt(page);
         self_cw.ap_registros_encontrados_cw.innerHTML = '';
@@ -1066,8 +1109,23 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
         // Activar la pagina actual seleccionada
         evt.target.classList.toggle('is-current')
+    },
 
-        console.log('habilitar anterior y siguiente')
+    _queryDmByPageEvent(evt) {
+        // Obtiene el numero de la pagina
+        let page = evt.target.innerText;
+
+        self_cw.pagina_actual = parseInt(page);
+        self_cw.ap_registros_encontrados_cw.innerHTML = '';
+
+        // Filtro de elementos
+        self_cw._queryDmByPage(self_cw.pagina_actual);
+
+        // Remover la pagina anterior seleccionada
+        dojo.query('.is-current').toggleClass('is-current');
+
+        // Activar la pagina actual seleccionada
+        evt.target.classList.toggle('is-current')
     },
 
     _nextPage(evt) {
@@ -1135,111 +1193,58 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
         pages_html = pages_html_array.join('');
         self_cw.ap_pagination_list_cw.innerHTML = pages_html;
-        dojo.query('.pages_result_cw').on('click', self_cw._queryDcByPageEvent);
+
+        if (self_cw.controller_query == 'dc') {
+            dojo.query('.pages_result_cw').on('click', self_cw._queryDcByPageEvent);
+        } else if (self_cw.controller_query == 'dm') {
+            dojo.query('.pages_result_cw').on('click', self_cw._queryDmByPageEvent);
+        }
     },
 
     _applyQueryDC2() {
         whereDefinitionArray = []
 
+        let ruc_dc = `(${self_cw.field_m_ruc} is not null)`;
+
         if (self_cw.input_ruc_dc_cw.value != '') {
-            var ruc_dc = `(${self_cw.field_m_ruc} like '%${self_cw.input_ruc_dc_cw.value}%')`;
-            whereDefinitionArray.push(ruc_dc);
+            ruc_dc = `(${self_cw.field_m_ruc} like '%${self_cw.input_ruc_dc_cw.value}%' and ${ruc_dc})`;
         }
 
-        var nombre_dc = `(lower(${self_cw.field_minero_informal}) like lower('%${self_cw.input_nombre_dc_cw.value}%'))`;
+        whereDefinitionArray.push(ruc_dc);
+
+        let nombre_dc = `(lower(${self_cw.field_minero_informal}) like lower('%${self_cw.input_nombre_dc_cw.value}%'))`;
         whereDefinitionArray.push(nombre_dc);
 
         if (self_cw.select_tipo_persona_cw.value != '') {
-            var tipo_persona_dc = `(${self_cw.field_tipo_persona} like '%${self_cw.select_tipo_persona_cw.value}%')`;
+            let tipo_persona_dc = `(${self_cw.field_tipo_persona} like '%${self_cw.select_tipo_persona_cw.value}%')`;
             whereDefinitionArray.push(tipo_persona_dc);
         };
 
-        var codigou_dc = `(upper(${self_cw.field_id_unidad}) like upper('%${self_cw.input_codigou_dc_cw.value}%'))`;
+        let codigou_dc = `(upper(${self_cw.field_id_unidad}) like upper('%${self_cw.input_codigou_dc_cw.value}%'))`;
         whereDefinitionArray.push(codigou_dc);
 
-        var nombredm_dc = `(lower(${self_cw.field_derecho_minero}) like lower('%${self_cw.input_nombre_dm_dc_cw.value}%'))`;
+        let nombredm_dc = `(lower(${self_cw.field_derecho_minero}) like lower('%${self_cw.input_nombre_dm_dc_cw.value}%'))`;
         whereDefinitionArray.push(nombredm_dc);
 
-        var ubigeo_dc = `(${self_cw.field_id_ubigeo_inei} like '${self_cw.controller_ubigeo}%')`;
+        let ubigeo_dc = `(${self_cw.field_id_ubigeo_inei} like '${self_cw.controller_ubigeo}%')`;
         whereDefinitionArray.push(ubigeo_dc);
 
         self_cw.whereDefinition = whereDefinitionArray.join(' and ');
         self_cw._queryDcGeneral();
-        // self_cw._queryDcByPage();
-        // self_cw.ap_none_resultados_opcion_cw.hidden = true;
-        // let class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
-        // if (!class_list_container_resultados.contains('active')) {
-        //     self_cw.container_resultados_opcion_cw.classList.toggle('active');
-        // }
-        // self_cw.ap_resultados_cw.click();
-        // this.busyIndicator.hide();
-    }
-    // _applyQueryDC() {
-    //     whereDefinitionArray = []
+    },
 
-    //     if (self_cw.input_ruc_dc_cw.value != '') {
-    //         var ruc_dc = `(${self_cw.field_m_ruc} like '%${self_cw.input_ruc_dc_cw.value}%')`;
-    //         whereDefinitionArray.push(ruc_dc);
-    //     }
+    _applyQueryDM2() {
+        self_cw.feature_dc.hide();
+        whereDefinitionArray = []
 
-    //     var nombre_dc = `(lower(${self_cw.field_minero_informal}) like lower('%${self_cw.input_nombre_dc_cw.value}%'))`;
-    //     whereDefinitionArray.push(nombre_dc);
+        var codigou_dm = `(upper(${self_cw.field_codigou_dm}) like upper('%${self_cw.input_codigou_dm_cw.value}%'))`;
+        whereDefinitionArray.push(codigou_dm)
 
-    //     if (self_cw.select_tipo_persona_cw.value != '') {
-    //         var tipo_persona_dc = `(${self_cw.field_tipo_persona} like '%${self_cw.select_tipo_persona_cw.value}%')`;
-    //         whereDefinitionArray.push(tipo_persona_dc);
-    //     };
+        var nombredm_dm = `(lower(${self_cw.field_concesion_dm}) like lower('%${self_cw.input_nombre_dm_cw.value}%'))`;
+        whereDefinitionArray.push(nombredm_dm)
 
-    //     var codigou_dc = `(upper(${self_cw.field_id_unidad}) like upper('%${self_cw.input_codigou_dc_cw.value}%'))`;
-    //     whereDefinitionArray.push(codigou_dc);
+        self_cw.whereDefinition = whereDefinitionArray.join(' and ');
 
-    //     var nombredm_dc = `(lower(${self_cw.field_derecho_minero}) like lower('%${self_cw.input_nombre_dm_dc_cw.value}%'))`;
-    //     whereDefinitionArray.push(nombredm_dc);
-
-    //     var ubigeo_dc = `(${self_cw.field_id_ubigeo_inei} like '${self_cw.controller_ubigeo}%')`;
-    //     whereDefinitionArray.push(ubigeo_dc);
-
-    //     var whereDefinition = whereDefinitionArray.join(' and ');
-
-
-    //     // Filtro a capa DC visible en la TOC
-    //     var id = self_cw.config.layer_id_dc;
-    //     var feature = self_cw.layersMap.getLayerInfoById(id);
-    //     feature.setFilter(whereDefinition);
-    //     feature.show();
-
-    //     // Filtro a capa DC sistema no visible en la TOC
-    //     var id_sys = self_cw.config.layer_id_dc_sys;
-    //     var feature_sys = self_cw.layersMap.getLayerInfoById(id_sys);
-    //     feature_sys.setFilter(whereDefinition);
-    //     feature_sys.show();
-
-    //     // Realizando el query a la capa
-    //     feature.layerObject.queryFeatures(whereDefinition, function(result) {
-    //         var rowcount = result.features.length;
-    //         if (rowcount) {
-    //             self_cw.controller_layer_query = true;
-    //         }
-    //         self_cw.ap_indicador_resultados_cw.innerText = rowcount;
-    //         self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
-
-    //         var data = result.features.map((i) => i.attributes);
-
-    //         self_cw._populateResultsDC(data)
-
-    //         self_cw.ap_none_resultados_opcion_cw.hidden = true;
-    //         var class_list_container_resultados = self_cw.container_resultados_opcion_cw.classList;
-    //         if (!class_list_container_resultados.contains('active')) {
-    //             self_cw.container_resultados_opcion_cw.classList.toggle('active');
-    //         }
-    //         self_cw.ap_resultados_cw.click();
-
-    //     });
-
-    //     feature_sys.layerObject.queryExtent(whereDefinition, (results) => {
-    //         if (results.count) {
-    //             self_cw.map.setExtent(results.extent, true);
-    //         }
-    //     })
-    // },
+        self_cw.queryDmGeneral();
+    },
 });
