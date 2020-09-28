@@ -70,9 +70,9 @@
     // .lista_capas_consulta_cw {
     //     display: none;
     // }
-    .registro_dc {
-        border-bottom: #ddd solid 1px;
-    }
+    // .registro_dc {
+    //     border-bottom: #ddd solid 1px;
+    // }
     .active {
         display: block;
         width: 100%;
@@ -97,6 +97,30 @@
         height: 50px;
         background-color: red;
     }
+    // .registros_resultados_cw>aside>ul>li>ul>li::before {
+    //     content: '\f138';
+    //     color: #ddd0;
+    //     position: absolute;
+    //     left: 0;
+    //     margin-left: 6.5px;
+    //     margin-top: 6.5px;
+    //     background: #e8e8e8;
+    //     width: 6px;
+    //     height: 6px;
+    //     border-radius: 50%;
+    // }
+    // .registros_resultados_cw>aside>ul>li>ul>li>ul>li::before {
+    //     content: '\f138';
+    //     color: #ddd0;
+    //     position: absolute;
+    //     left: 0;
+    //     margin-left: 6.5px;
+    //     margin-top: 6.5px;
+    //     background: #e8e8e8;
+    //     width: 6px;
+    //     height: 6px;
+    //     border-radius: 50%;
+    // }
 }
 
 
