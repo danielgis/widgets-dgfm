@@ -62,13 +62,24 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     field_sustancia_dm: 'ID_CLASE_SUSTANCIA',
 
     // Campos DC
-    field_id: 'ID', // Objectid del minero informal
-    field_minero_informal: 'MINERO_INFORMAL', // Nombre del minero informal
+    field_id: 'ESRI_OID', // Objectid del minero informal
+    field_minero_informal: 'NOMBRE_MIN', // Nombre del minero informal
+    field_minero_informal_rep: 'NOMBRE_REP', // Nombre del representante
     field_m_ruc: 'M_RUC', // RUC del minero informal
-    field_derecho_minero: 'DERECHO_MINERO', // Nombre del derecho mineroo
-    field_id_unidad: 'ID_UNIDAD', // Identificador del derecho minero (CODIGOU)
-    field_tipo_persona: 'TIPO_PERSONA', // Tipo de persona (natural, juridica)
-    field_id_ubigeo_inei: 'ID_UBIGEO_INEI', // Ubigeo
+    field_derecho_minero: 'NOMBRE_DM', // Nombre del derecho mineroo
+    field_id_unidad: 'CODIGOU', // Identificador del derecho minero (CODIGOU)
+    field_tipo_persona: 'M_TIPO_PERSONA', // Tipo de persona (natural, juridica)
+    field_id_ubigeo_inei: 'CD_DIST', // Ubigeo
+
+    // Campos Tabla DC
+    field_id_tb: 'ESRI_OID', // Objectid del minero informal
+    field_minero_informal_tb: 'NOMBRE_MIN', // Nombre del minero informal
+    // field_minero_informal_rep_tb: 'NOMBRE_REP', // Nombre del representante
+    field_m_ruc_tb: 'M_RUC', // RUC del minero informal
+    field_derecho_minero_tb: 'NOMBRE_DM', // Nombre del derecho mineroo
+    field_id_unidad_tb: 'CODIGOU', // Identificador del derecho minero (CODIGOU)
+    field_tipo_persona_tb: 'M_TIPO_PERSONA', // Tipo de persona (natural, juridica)
+    field_id_ubigeo_inei_tb: 'CD_DIST', // Ubigeo
 
     controller_query: '', // Permite identificar la opcion de consulta seleccionada
     controller_layer_query: false,
@@ -98,11 +109,11 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         // console.log('Consulta_wgt::postCreate');;
         this._getAllLayers();
         this.feature_dc = this.layersMap.getLayerInfoById(this.config.layer_id_dc);
+        this.feature_dc_table = this.layersMap.getTableInfoById(this.config.table_id_dc);
         this.feature_dm = this.layersMap.getLayerInfoById(this.config.layer_id_dm);
         this.feature_dep = this.layersMap.getLayerInfoById(this.config.layer_id_dep);
         this.feature_prov = this.layersMap.getLayerInfoById(this.config.layer_id_prov);
         this.feature_dist = this.layersMap.getLayerInfoById(this.config.layer_id_dist);
-
     },
 
     _getAllLayers() {
@@ -473,29 +484,32 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         let id = evt.currentTarget.innerText;
         let query = new Query();
         query.where = `${self_cw.field_codigou_dm} = '${id}'`
-        let id_layer = self_cw.config.layer_id_dm;
-        let feature = self_cw.layersMap.getLayerInfoById(id_layer);
-        feature.setFilter(query.where);
-        feature.show();
+            // let id_layer = self_cw.config.layer_id_dm;
+            // let feature = self_cw.layersMap.getLayerInfoById(id_layer);
+        self_cw.feature_dm.setFilter(query.where);
+        self_cw.feature_dm.show();
 
-        feature.getLayerObject().then(function(response) {
+        self_cw.feature_dm.getLayerObject().then(function(response) {
             // self_cw.map.graphics.clear();
             response.queryFeatures(query, function(results) {
                 if (results.features.length) {
-                    let symbol = new SimpleFillSymbol(
-                        SimpleFillSymbol.STYLE_NULL,
-                        new SimpleLineSymbol(
-                            SimpleLineSymbol.STYLE_SOLID,
-                            new Color([255, 0, 0]), 3
-                        ),
-                        new Color([125, 125, 125, 0.35]));
+                    // let symbol = new SimpleFillSymbol(
+                    //     SimpleFillSymbol.STYLE_NULL,
+                    //     new SimpleLineSymbol(
+                    //         SimpleLineSymbol.STYLE_SOLID,
+                    //         new Color([255, 0, 0]), 3
+                    //     ),
+                    //     new Color([125, 125, 125, 0.35]));
 
                     let ext = results.features[0].geometry.getExtent();
                     let center = results.features[0].geometry.getCentroid();
 
                     // let graphic = results.features[0].setSymbol(symbol)
                     // self_cw.map.graphics.add(graphic);
-                    self_cw._openPopupAutocamitcally2(results, center);
+                    self_cw.map.infoWindow.setFeatures(results.features);
+                    self_cw.map.infoWindow.show(center);
+                    // self_cw.map.centerAt(center);
+                    // self_cw._openPopupAutocamitcally2(results, center);
                     self_cw.map.setExtent(ext, true);
 
                 } else {
@@ -621,8 +635,6 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         // let id = evt.currentTarget.parentElement.getAttribute('value');
         // let feature = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc)
 
-        // let feature_sys = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc_sys)
-
         let query = new Query();
         query.where = `(${self_cw.field_id_unidad} = '${id}') and (${self_cw.field_m_ruc} is not null)`;
 
@@ -641,7 +653,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                     let rownum = results.features.length;
                     evt.target.innerText = `${self_cw.nls.show_reinfos} (${rownum})`
                     let data = results.features.map((i) => i.attributes);
-                    let lidata = data.map((i, index) => `<li class="registro_dc" id="${i[self_cw.field_id]}"><a>${index + 1}. ${i[self_cw.field_m_ruc]} - ${i[self_cw.field_minero_informal]}</a></li>`)
+                    let lidata = data.map((i, index) => `<li class="registro_dc" id="${i[self_cw.field_id]}"><a>${index + 1}. ${i[self_cw.field_m_ruc]} - ${i[self_cw.field_tipo_persona].toLowerCase() == 'juridica' ? i[self_cw.field_minero_informal_rep] : i[self_cw.field_minero_informal]}</a></li>`)
                     let lidataString = lidata.join('');
                     let ulnode = dojo.create('ul');
                     ulnode.innerHTML = lidataString;
@@ -733,10 +745,10 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
 
     _showPopupRowSelectedClickDM(evt) {
-        let id_row = evt.currentTarget.id;
+        let id = evt.currentTarget.id;
 
         let query = new Query();
-        query.where = `${self_cw.field_codigou_dm} = '${id_row}'`;
+        query.where = `${self_cw.field_codigou_dm} = '${id}'`;
         query.returnGeometry = true;
         query.outFields = ['*'];
 
@@ -747,12 +759,11 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                 self_cw._showMessage(self_cw.nls.error_none_geometry);
                 return;
             };
-
+            let ext = results.features[0].geometry.getExtent();
             self_cw.feature_dm.layerObject.selectFeatures(query, FeatureLayer.SELECTION_NEW).then(
                 function(response) {
                     self_cw.map.infoWindow.setFeatures(response);
                     self_cw.map.infoWindow.show(center);
-                    let ext = results.features[0].geometry.getExtent();
                     self_cw.map.setExtent(ext.expand(1.6), true);
                 },
                 function(error) {
@@ -795,13 +806,10 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
             // this.map.graphics.clear();
         let whereDefinition = '1=1'
         lyr_dc = this.layersMap.getLayerInfoById(this.config.layer_id_dc);
-        // lyr_dc_sys = this.layersMap.getLayerInfoById(this.config.layer_id_dc_sys);
         lyr_dm = this.layersMap.getLayerInfoById(this.config.layer_id_dm);
         lyr_dc.hide();
-        // lyr_dc_sys.hide();
         lyr_dm.hide();
         lyr_dc.setFilter(whereDefinition);
-        // lyr_dc_sys.setFilter(whereDefinition);
         lyr_dm.setFilter(whereDefinition);
         this.busyIndicator.hide()
         this.container_resultados_opcion_cw.classList.remove('active');
@@ -840,7 +848,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         // var feature_dc = self_cw.layersMap.getLayerInfoById(self_cw.config.layer_id_dc);
         self_cw.feature_dc.hide();
         self_cw.feature_dc.setFilter('');
-        self_cw.feature_dc.getLayerObject().then(
+        self_cw.feature_dc_table.getLayerObject().then(
                 function(response) {
                     response.queryCount(query, function(results) {
                         self_cw.numero_registros = results
@@ -912,7 +920,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         self_cw.feature_dc.setFilter('');
 
         // Realizando el query a la capa
-        self_cw.feature_dc.layerObject.queryFeatures(query, function(result) {
+        self_cw.feature_dc_table.layerObject.queryFeatures(query, function(result) {
             var rowcount = result.features.length;
             if (rowcount) {
                 self_cw.controller_layer_query = true;
@@ -985,7 +993,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         query.returnGeometry = false;
         query.num = self_cw.registros_pagina;
         query.start = n == 1 ? 0 : (n - 1) * self_cw.registros_pagina;
-        query.orderByFields = [self_cw.field_id_unidad];
+        query.orderByFields = [self_cw.field_codigou_dm];
 
         var start = query.start + 1
         var fin = query.start + query.num > self_cw.numero_registros ? self_cw.numero_registros : self_cw.pagina_actual * query.num
@@ -1003,9 +1011,9 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             let data = result.features.map((i) => i.attributes);
 
-            let ids = data.map((i) => i[self_cw.field_id_unidad])
+            let ids = data.map((i) => i[self_cw.field_codigou_dm])
             let ids_join = ids.join("', '")
-            let query_ids = self_cw.field_id_unidad + " IN ('" + ids_join + "')"
+            let query_ids = self_cw.field_codigou_dm + " IN ('" + ids_join + "')"
 
 
             self_cw.feature_dm.setFilter(query_ids);

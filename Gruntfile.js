@@ -72,6 +72,7 @@ module.exports = function(grunt) {
                     'widgets/**/**.html',
                     'widgets/**/**.json',
                     'widgets/**/**.css',
+                    'widgets/**/css/**',
                     'widgets/**/images/**',
                     'widgets/**/nls/**',
                     'themes/**/**.html',
