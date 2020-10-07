@@ -349,7 +349,7 @@ export default declare([BaseWidget], {
 
 
             // self_lw.map.centerAndZoom(center, 10);
-            self_cw.map.setExtent(graphic._extent, true);
+            self_lw.map.setExtent(graphic._extent, true);
 
 
             self_lw._addResultados(graphicLayer, name);
