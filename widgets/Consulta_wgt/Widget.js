@@ -58,28 +58,28 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
     //  Campos DM Minem
     field_codigou_dm: 'ID_UNIDAD',
-    field_concesion_dm: 'NOMBRE',
+    field_concesion_dm: 'NOMBRE_DM',
     field_sustancia_dm: 'ID_CLASE_SUSTANCIA',
 
     // Campos DC
-    field_id: 'ESRI_OID', // Objectid del minero informal
+    field_id: 'ID', // Objectid del minero informal
     field_minero_informal: 'NOMBRE_MIN', // Nombre del minero informal
     field_minero_informal_rep: 'NOMBRE_REP', // Nombre del representante
     field_m_ruc: 'M_RUC', // RUC del minero informal
     field_derecho_minero: 'NOMBRE_DM', // Nombre del derecho mineroo
-    field_id_unidad: 'CODIGOU', // Identificador del derecho minero (CODIGOU)
+    field_id_unidad: 'ID_UNIDAD', // Identificador del derecho minero (CODIGOU)
     field_tipo_persona: 'M_TIPO_PERSONA', // Tipo de persona (natural, juridica)
-    field_id_ubigeo_inei: 'CD_DIST', // Ubigeo
+    field_id_ubigeo_inei: 'ID_DIST', // Ubigeo
 
     // Campos Tabla DC
-    field_id_tb: 'ESRI_OID', // Objectid del minero informal
+    field_id_tb: 'ID', // Objectid del minero informal
     field_minero_informal_tb: 'NOMBRE_MIN', // Nombre del minero informal
     // field_minero_informal_rep_tb: 'NOMBRE_REP', // Nombre del representante
     field_m_ruc_tb: 'M_RUC', // RUC del minero informal
     field_derecho_minero_tb: 'NOMBRE_DM', // Nombre del derecho mineroo
-    field_id_unidad_tb: 'CODIGOU', // Identificador del derecho minero (CODIGOU)
+    field_id_unidad_tb: 'ID_UNIDAD', // Identificador del derecho minero (CODIGOU)
     field_tipo_persona_tb: 'M_TIPO_PERSONA', // Tipo de persona (natural, juridica)
-    field_id_ubigeo_inei_tb: 'CD_DIST', // Ubigeo
+    field_id_ubigeo_inei_tb: 'ID_DIST', // Ubigeo
 
     controller_query: '', // Permite identificar la opcion de consulta seleccionada
     controller_layer_query: false,
@@ -576,7 +576,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                         <a class="container_head_registros_cw">
                             <div class="columns is-mobile">
                                 <div class="column is-four-fifths title_registros_cw"></div>
-                                <div class="column has-text-right"><span class="icon has-text-info"><i class="fas fa-search"></i></span></div>
+                                <div class="column has-text-right"><span class="icon has-text-info"><i class="fas fa-map-marker-alt"></i></span></div>
                             </div>
                         </a>
                         <ul class="detalle_registros_resultados_cw">
@@ -594,9 +594,15 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             newRow.style.display = 'block';
 
+            if (r['FLG_COOROK'] == 0) {
+                newRow.getElementsByClassName('column has-text-right')[0].innerHTML = '<span class="has-tooltip-arrow" data-tooltip="Tooltip content"><span class="icon has-text-warning"><i class="fas fa-ban"></i></span></span>'
+            }
+
             // var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
             newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${enumerate_ini}. ${r[self_cw.field_minero_informal]}`;
             newRow.getElementsByClassName('container_head_registros_cw')[0].id = r[self_cw.field_id];
+
+
 
             // Lista campos
 
@@ -646,7 +652,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
         // evt.currentTarget.parentElement.classList.toggle('active')
 
-        self_cw.feature_dc.getLayerObject().then(function(response) {
+        // self_cw.feature_dc.getLayerObject().then(function(response) {
+        self_cw.feature_dc_table.getLayerObject().then(function(response) {
             response.queryFeatures(query, function(results) {
                 if (results.features.length) {
                     evt.target.parentElement.classList.toggle('active')
@@ -717,7 +724,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         let id_row = evt.currentTarget.id;
 
         let query = new Query();
-        query.where = `${self_cw.field_id} = ${id_row}`
+        query.where = `${self_cw.field_id} = '${id_row}'`
 
         self_cw.feature_dc.layerObject.selectFeatures(query, FeatureLayer.SELECTION_NEW)
             .then(
@@ -865,6 +872,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                 self_cw._showMessage(error.message, type = 'error')
                 self_cw.busyIndicator_lw.hide();
             });
+
     },
 
     queryDmGeneral() {
@@ -875,10 +883,9 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         self_cw.feature_dm.getLayerObject()
             .then(
                 function(response) {
-                    response.queryIds(query, function(results) {
-                        // console.log(results);
-                        self_cw.numero_registros = results.length
-                        self_cw.ap_indicador_resultados_cw.innerText = results.length;
+                    response.queryCount(query, function(results) {
+                        self_cw.numero_registros = results;
+                        self_cw.ap_indicador_resultados_cw.innerText = results;
                         self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
 
                         self_cw._generatePages();
@@ -907,6 +914,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
         let query = new Query();
         query.returnGeometry = false;
+        query.outFields = ['*'];
         query.where = self_cw.whereDefinition;
         query.num = self_cw.registros_pagina;
         query.start = n == 1 ? 0 : (n - 1) * self_cw.registros_pagina;
@@ -931,8 +939,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
             var data = result.features.map((i) => i.attributes);
 
             let ids = data.map((i) => i[self_cw.field_id])
-            let ids_join = ids.join(', ')
-            let query_ids = self_cw.field_id + ' IN (' + ids_join + ')'
+            let ids_join = ids.join("', '")
+            let query_ids = self_cw.field_id + ` IN (' + ${ids_join} + ')`
 
 
             self_cw.feature_dc.setFilter(query_ids);

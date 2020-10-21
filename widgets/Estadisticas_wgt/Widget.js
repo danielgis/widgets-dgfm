@@ -186,7 +186,7 @@ export default declare([
         var queryTask = new QueryTask(url);
         var query = new Query();
 
-        query.where = this.iniClause;
+        // query.where = this.iniClause;
         query.groupByFieldsForStatistics = [self_ew.field_x_vertical_bar];
 
         var countStatDef = new StatisticDefinition();
@@ -194,14 +194,20 @@ export default declare([
         countStatDef.onStatisticField = self_ew.field_x_vertical_bar;
         countStatDef.outStatisticFieldName = self_ew.field_y_vertical_bar;
 
-        query.orderByFields = [`COUNT(${self_ew.field_x_vertical_bar}) DESC`]
-
+        // query.orderByFields = [`COUNT(${self_ew.field_x_vertical_bar}) DESC`]
         query.outStatistics = [countStatDef];
 
         queryTask.execute(query, function(results) {
-            x = results.features.map((i) => i.attributes[self_ew.field_x_vertical_bar]);
-            y = results.features.map((i) => i.attributes[self_ew.field_y_vertical_bar]);
+            let dataresults = results.features.map((i) => [i.attributes[self_ew.field_x_vertical_bar], i.attributes[self_ew.field_y_vertical_bar]]);
+            let dataresults_sort = dataresults.sort(function(a, b) { return b[1] - a[1]; });
+            // x = results.features.map((i) => i.attributes[self_ew.field_x_vertical_bar]);
+            // y = results.features.map((i) => i.attributes[self_ew.field_y_vertical_bar]);
+            x = dataresults_sort.map((i) => i[0]);
+            y = dataresults_sort.map((i) => i[1]);
+
             self_ew._VerticalBarChart(x, y);
+        }, function(error) {
+            console.log(error)
         });
 
     },
