@@ -7,7 +7,7 @@ import QueryTask from "esri/tasks/QueryTask";
 import StatisticDefinition from "esri/tasks/StatisticDefinition";
 import on from 'dojo/on';
 import Point from "esri/geometry/Point";
-import '../../libs/chartjs/chartjs-plugin-labels';
+import 'ChartLabels';
 
 // To create a widget, you need to derive from BaseWidget.
 export default declare([
@@ -17,7 +17,7 @@ export default declare([
     StatisticDefinition,
 ], {
 
-    // Desarrollador: Ing. Geógrafo Daniel Aguado H.
+    // Developer: Ing. Geógrafo Daniel Aguado H.
     // linkedin: https://www.linkedin.com/in/danielgis
     // WebSite: https://danielgis.github.io/
 

@@ -10,13 +10,13 @@ import StatisticDefinition from "esri/tasks/StatisticDefinition";
 // import InfoTemplate from "esri/InfoTemplate";
 import FeatureLayer from "esri/layers/FeatureLayer";
 
-import GraphicsLayer from "esri/layers/GraphicsLayer";
-import Graphic from 'esri/graphic';
+// import GraphicsLayer from "esri/layers/GraphicsLayer";
+// import Graphic from 'esri/graphic';
 
-import SimpleFillSymbol from "esri/symbols/SimpleFillSymbol";
-import SimpleLineSymbol from 'esri/symbols/SimpleLineSymbol';
-import SimpleMarkerSymbol from 'esri/symbols/SimpleMarkerSymbol';
-import Color from 'dojo/_base/Color';
+// import SimpleFillSymbol from "esri/symbols/SimpleFillSymbol";
+// import SimpleLineSymbol from 'esri/symbols/SimpleLineSymbol';
+// import SimpleMarkerSymbol from 'esri/symbols/SimpleMarkerSymbol';
+// import Color from 'dojo/_base/Color';
 
 import Message from "jimu/dijit/Message";
 // import 'jimu/dijit/LoadingIndicator';
@@ -33,6 +33,10 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     StatisticDefinition,
     // FeatureLayer
 ], {
+
+    // Developer: Ing. Geógrafo Daniel Aguado H.
+    // linkedin: https://www.linkedin.com/in/danielgis
+    // WebSite: https://danielgis.github.io/
 
     // Custom widget code goes here
 
@@ -59,7 +63,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     //  Campos DM Minem
     field_codigou_dm: 'ID_UNIDAD',
     field_concesion_dm: 'NOMBRE_DM',
-    field_sustancia_dm: 'ID_CLASE_SUSTANCIA',
+    field_sustancia_dm: 'SUSTANCIA',
 
     // Campos DC
     field_id: 'ID', // Objectid del minero informal
@@ -91,6 +95,8 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     feature_dc: null,
     feature_dm: null,
 
+    queryController: '',
+
     numero_registros: 0,
     numero_paginas: 0,
     registros_pagina: 1000,
@@ -99,6 +105,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
     grupos_paginas: [],
     factor: 4,
     whereDefinition: '',
+    stateCoord: ['Fuera del territorio nacional (*)', 'Fuera del DM declarado', 'Ubicación correcta', 'Fuera del DM declarado'],
 
     // add additional properties here
 
@@ -576,7 +583,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                         <a class="container_head_registros_cw">
                             <div class="columns is-mobile">
                                 <div class="column is-four-fifths title_registros_cw"></div>
-                                <div class="column has-text-right"><span class="icon has-text-info"><i class="fas fa-map-marker-alt"></i></span></div>
+                                <div class="column has-text-right" title="Localizar en el mapa"><span class="icon has-text-info"><i class="fas fa-map-marker-alt"></i></span></div>
                             </div>
                         </a>
                         <ul class="detalle_registros_resultados_cw">
@@ -594,22 +601,28 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
 
             newRow.style.display = 'block';
 
-            if (r['FLG_COOROK'] == 0) {
-                newRow.getElementsByClassName('column has-text-right')[0].innerHTML = '<span class="has-tooltip-arrow" data-tooltip="Tooltip content"><span class="icon has-text-warning"><i class="fas fa-ban"></i></span></span>'
+            let estateLocation = r['FLG_COOROK']
+
+            if (estateLocation == 0) {
+                newRow.getElementsByClassName('column has-text-right')[0].title = '';
+                newRow.getElementsByClassName('column has-text-right')[0].innerHTML = '<span class="icon has-text-warning"><i class="fas fa-ban"></i></span>'
+                newRow.getElementsByClassName('container_head_registros_cw')[0].classList.remove('container_head_registros_cw');
+            }
+
+            if (estateLocation != 0) {
+                newRow.getElementsByClassName('container_head_registros_cw')[0].id = r[self_cw.field_id];
             }
 
             // var nodeTitle = dojo.query('.title_registros_cw', newRow)[0]
             newRow.getElementsByClassName('title_registros_cw')[0].innerText = `${enumerate_ini}. ${r[self_cw.field_minero_informal]}`;
-            newRow.getElementsByClassName('container_head_registros_cw')[0].id = r[self_cw.field_id];
-
-
 
             // Lista campos
 
             var fieldsList = []
             fieldsList.push(`<li>${self_cw.nls.field_dc_ruc}: ${r[self_cw.field_m_ruc]}</li>`);
+            fieldsList.push(`<li>Estado coordenada: ${self_cw.stateCoord[estateLocation]}</li>`);
             fieldsList.push(`<li>${self_cw.nls.field_nombre_dm}: ${r[self_cw.field_derecho_minero]}</li>`);
-            fieldsList.push(`<li>${self_cw.nls.field_codigou_dm}: <span class="tag is-link codigou_cw">${r[self_cw.field_id_unidad]}<span></li>`);
+            fieldsList.push(`<li>${self_cw.nls.field_codigou_dm}: <span title="ver derecho minero" class="tag is-link codigou_cw">${r[self_cw.field_id_unidad]}<span></li>`);
 
             fieldsListNode = fieldsList.join('');
 
@@ -870,7 +883,7 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
                 })
             .catch((error) => {
                 self_cw._showMessage(error.message, type = 'error')
-                self_cw.busyIndicator_lw.hide();
+                self_cw.busyIndicator.hide();
             });
 
     },
@@ -883,21 +896,23 @@ export default declare([BaseWidget, _WidgetsInTemplateMixin, Query,
         self_cw.feature_dm.getLayerObject()
             .then(
                 function(response) {
-                    response.queryCount(query, function(results) {
-                        self_cw.numero_registros = results;
-                        self_cw.ap_indicador_resultados_cw.innerText = results;
+                    response.queryIds(query, function(results) {
+                        let count = results ? results.length : 0
+                        self_cw.numero_registros = count
+                        self_cw.ap_indicador_resultados_cw.innerText = count;
                         self_cw.ap_titulo_resultados_cw.innerText = self_cw.titulo_consulta.innerText + ' encontrados';
 
                         self_cw._generatePages();
                         self_cw._queryDmByPage();
-                        // self_cw.busyIndicator.hide();
+
                     }, function(error) {
-                        self_cw._showMessage(error.message, type = 'error')
+                        self_cw._showMessage(self_cw.nls.error_query_feature + '\n' + error.message, type = 'error')
+                        self_cw.busyIndicator.hide();
                     })
                 })
             .catch((error) => {
                 self_cw._showMessage(error.message, type = 'error')
-                self_cw.busyIndicator_lw.hide();
+                self_cw.busyIndicator.hide();
             });
     },
 

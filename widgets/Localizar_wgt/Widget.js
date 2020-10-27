@@ -22,6 +22,10 @@ import 'https://unpkg.com/read-excel-file@4.x/bundle/read-excel-file.min.js';
 // To create a widget, you need to derive from BaseWidget.
 export default declare([BaseWidget], {
 
+    // Developer: Ing. Geógrafo Daniel Aguado H.
+    // linkedin: https://www.linkedin.com/in/danielgis
+    // WebSite: https://danielgis.github.io/
+
     // Custom widget code goes here
 
     baseClass: 'localizar-wgt',
